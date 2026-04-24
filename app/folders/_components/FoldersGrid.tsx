@@ -83,9 +83,11 @@ function FolderItem({ folder }: { folder: FolderRow }) {
         className="h-16 w-auto"
       />
       <span className="text-sm font-medium text-[#503836]">{folder.name}</span>
-      <span className="text-sm font-bold text-[#5DBFA8]">
-        {days === null ? "날짜 모름" : `${days.toLocaleString()} days`}
-      </span>
+      {days !== null && (
+        <span className="text-sm font-bold text-[#5DBFA8]">
+          {days.toLocaleString()} days
+        </span>
+      )}
     </Link>
   );
 }

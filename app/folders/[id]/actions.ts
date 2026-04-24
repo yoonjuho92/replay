@@ -20,6 +20,29 @@ function getOpenAI() {
   return new OpenAI({ apiKey });
 }
 
+async function getFolderContext(
+  folderId: string,
+): Promise<{ name: string; memoryDate: string | null } | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("folders")
+    .select("name, memory_date")
+    .eq("id", folderId)
+    .maybeSingle();
+  if (!data) return null;
+  return { name: data.name, memoryDate: data.memory_date };
+}
+
+function formatFolderContext(ctx: {
+  name: string;
+  memoryDate: string | null;
+}): string {
+  return [
+    `폴더 이름(사건의 주제): ${ctx.name}`,
+    `사건이 일어난 날짜: ${ctx.memoryDate ?? "기록되지 않음"}`,
+  ].join("\n");
+}
+
 export async function saveMemory(
   folderId: string,
   input: MemorySave,
@@ -76,6 +99,7 @@ export async function saveMemoryChoices(
 }
 
 export async function generateNarrative(
+  folderId: string,
   input: MemoryInput,
 ): Promise<{ text: string; error: string | null }> {
   const openai = getOpenAI();
@@ -83,18 +107,27 @@ export async function generateNarrative(
     return { text: "", error: "OPENAI_API_KEY가 설정되지 않았어요." };
   }
 
+  const ctx = await getFolderContext(folderId);
+  if (!ctx) {
+    return { text: "", error: "폴더 정보를 찾지 못했어요." };
+  }
+
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.4-mini",
       messages: [
         {
           role: "system",
           content:
-            "사용자가 후회하는 과거 기억에 관한 12가지 답변을 바탕으로, 사용자가 실제로 겪은 그 일을 한 편의 짧은 회고문으로 정리해 주세요. 1인칭 과거형(나는 ~했다 형태)으로, 그 순간의 장면(장소, 함께 있던 사람, 행동, 날씨, 소리, 옷차림, 마음속 경고음, 함께 있던 사람의 반응, 미처 하지 못한 말 등)이 자연스럽게 녹아들도록 5~7문장 분량으로 작성합니다. 답변에 드러난 내용만 사용하고 새로운 사실을 만들어내지 마세요. 따옴표나 불필요한 수식 없이 본문만.",
+            "사용자가 후회하는 과거 기억에 관한 12가지 답변과 그 사건의 주제(폴더 이름), 일어난 날짜를 바탕으로, 사용자가 실제로 겪은 그 일을 A4 한 페이지 분량(약 800~1000자, 4~6문단)의 1인칭 에세이로 풀어내 주세요. 1인칭 과거형(나는 ~했다 형태)으로, 그 순간의 장면(장소, 함께 있던 사람, 행동, 날씨, 소리, 옷차림, 마음속 경고음, 함께 있던 사람의 반응, 미처 하지 못한 말 등)과 사건의 주제·시점이 충분히 묘사되도록 풍부하게 적되 주어진 정보 안에서만 상상하고 새로운 사실은 만들어내지 마세요. 감정과 후회의 결을 자연스럽게 녹여내고, 따옴표나 머리글, 제목 없이 본문만.",
         },
         {
           role: "user",
-          content: formatInputForPrompt(input),
+          content: [
+            formatFolderContext(ctx),
+            "",
+            formatInputForPrompt(input),
+          ].join("\n"),
         },
       ],
     });
@@ -116,9 +149,14 @@ export async function generateAndSaveChoices(
     return { choices: null, error: "OPENAI_API_KEY가 설정되지 않았어요." };
   }
 
+  const ctx = await getFolderContext(folderId);
+  if (!ctx) {
+    return { choices: null, error: "폴더 정보를 찾지 못했어요." };
+  }
+
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.4-mini",
       messages: [
         {
           role: "system",
@@ -128,6 +166,8 @@ export async function generateAndSaveChoices(
         {
           role: "user",
           content: [
+            formatFolderContext(ctx),
+            "",
             "사용자의 답변:",
             formatInputForPrompt(input),
             "",
@@ -183,18 +223,31 @@ export async function generateAndSaveStory(
     return { choices: null, error: "선택한 항목을 찾지 못했어요." };
   }
 
+  const ctx = await getFolderContext(folderId);
+  if (!ctx) {
+    return { choices: null, error: "폴더 정보를 찾지 못했어요." };
+  }
+
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5.4",
+      model: "gpt-5.4-mini",
       messages: [
         {
           role: "system",
           content:
-            "사용자가 후회하는 과거 기억과 그 순간에 할 수 있었던 다른 선택지가 주어집니다. 그 선택을 진짜로 했다고 가정하고, 시간이 지난 뒤에 그때를 돌아보며(새로고침한 기억을 돌아보며) 적는다고 생각하고 글을 적어주세요. 가정이지만 글에서는 가정이 아니라 실제로 그 선택을 한 것처럼 — ~했다면이 아니라 ~했다 형태로 — 3~5문장의 짧은 이야기로 한국어로 써 주세요. 담백하고 진솔한 어조. 따옴표나 불필요한 수식 없이 본문만 작성합니다.",
+            "사용자가 후회하는 과거 기억(주제, 일어난 날짜 포함)과 그 순간에 할 수 있었던 다른 선택지가 주어집니다. 그 선택을 진짜로 했다고 가정하고, 시간이 지난 뒤에 그때를 돌아보며(새로고침한 기억을 돌아보며) 적는다고 생각하고 한국어로 적어주세요. 가정이지만 글에서는 가정이 아니라 실제로 그 선택을 한 것처럼 — ~했다면이 아니라 ~했다 형태로 — A4 한 페이지 분량(약 800~1000자, 4~6문단)의 1인칭 에세이로 풀어내 주세요. 그 선택 이후의 장면, 감정, 함께 있던 사람과의 흐름, 시간이 흐른 뒤의 깨달음을 담백하고 진솔한 어조로 자연스럽게 풀어냅니다. 따옴표나 머리글, 제목 없이 본문만 작성합니다.",
         },
         {
           role: "user",
-          content: `사용자가 후회하는 과거 기억:\n${input.generated}\n\n새로고침할 선택:\n${item.text}`,
+          content: [
+            formatFolderContext(ctx),
+            "",
+            "사용자가 후회하는 과거 기억:",
+            input.generated,
+            "",
+            "새로고침할 선택:",
+            item.text,
+          ].join("\n"),
         },
       ],
     });

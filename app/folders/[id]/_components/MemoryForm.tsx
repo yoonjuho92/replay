@@ -98,10 +98,12 @@ function FolderHeading({
   return (
     <h1 className="text-2xl font-bold leading-snug">
       <span className="text-[#5DBFA8]">{folderName}</span>
-      <span className="text-[#503836]">
-        {" "}
-        으로부터 {days === null ? "날짜 모름" : `${days.toLocaleString()}일째…`}
-      </span>
+      {days !== null && (
+        <span className="text-[#503836]">
+          {" "}
+          으로부터 {days.toLocaleString()}일째…
+        </span>
+      )}
     </h1>
   );
 }
@@ -158,7 +160,7 @@ export function MemoryForm({
       return;
     }
     setIsLoading(true);
-    const res = await generateNarrative(answers);
+    const res = await generateNarrative(folderId, answers);
     if (res.error) {
       setError(res.error);
       setIsLoading(false);
@@ -193,7 +195,7 @@ export function MemoryForm({
   const handleReviewRegenerate = async () => {
     setError(null);
     setIsLoading(true);
-    const res = await generateNarrative(answers);
+    const res = await generateNarrative(folderId, answers);
     if (res.error) {
       setError(res.error);
       setIsLoading(false);
