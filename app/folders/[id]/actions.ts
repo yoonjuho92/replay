@@ -4,22 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
+import {
+  INPUT_FIELDS,
+  formatInputForPrompt,
+  type MemoryChoices,
+  type MemoryInput,
+  type MemorySave,
+} from "./inputs";
 
 type ActionResult = { error: string | null };
-
-export type MemoryInput = {
-  regret: string;
-  people: string;
-  place: string;
-  outcome: string;
-};
-
-export type MemorySave = MemoryInput & { generated: string };
-
-export type MemoryChoices = {
-  items: { text: string; narrative: string }[];
-  selected: number | null;
-};
 
 function getOpenAI() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -37,13 +30,15 @@ export async function saveMemory(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const inputs: MemoryInput = INPUT_FIELDS.reduce(
+    (acc, key) => ({ ...acc, [key]: input[key] ?? "" }),
+    {} as MemoryInput,
+  );
+
   const { error } = await supabase
     .from("folders")
     .update({
-      memory_text: input.regret,
-      memory_people: input.people,
-      memory_place: input.place,
-      memory_outcome: input.outcome,
+      memory_inputs: inputs,
       memory_generated: input.generated,
       updated_at: new Date().toISOString(),
     })
@@ -95,16 +90,11 @@ export async function generateNarrative(
         {
           role: "system",
           content:
-            "사용자가 후회하는 과거의 선택에 대한 4가지 답변(후회하는 선택, 함께한 사람, 장소, 결과)을 바탕으로, 사용자가 실제로 겪은 그 일을 한 편의 짧은 회고문으로 정리해 주세요. 1인칭 과거형(나는 ~했다 형태)으로, 담백하고 진솔한 어조로 3~5문장 분량. 새로운 사실을 만들어내지 말고 주어진 답변에서 드러난 내용을 자연스러운 문장으로 풀어내세요. 따옴표나 불필요한 수식 없이 본문만 작성합니다.",
+            "사용자가 후회하는 과거 기억에 관한 12가지 답변을 바탕으로, 사용자가 실제로 겪은 그 일을 한 편의 짧은 회고문으로 정리해 주세요. 1인칭 과거형(나는 ~했다 형태)으로, 그 순간의 장면(장소, 함께 있던 사람, 행동, 날씨, 소리, 옷차림, 마음속 경고음, 함께 있던 사람의 반응, 미처 하지 못한 말 등)이 자연스럽게 녹아들도록 5~7문장 분량으로 작성합니다. 답변에 드러난 내용만 사용하고 새로운 사실을 만들어내지 마세요. 따옴표나 불필요한 수식 없이 본문만.",
         },
         {
           role: "user",
-          content: [
-            `후회하는 선택: ${input.regret}`,
-            `함께한 사람: ${input.people}`,
-            `장소: ${input.place}`,
-            `결과: ${input.outcome}`,
-          ].join("\n"),
+          content: formatInputForPrompt(input),
         },
       ],
     });
@@ -138,12 +128,10 @@ export async function generateAndSaveChoices(
         {
           role: "user",
           content: [
-            `후회하는 선택: ${input.regret}`,
-            `함께한 사람: ${input.people}`,
-            `장소: ${input.place}`,
-            `결과: ${input.outcome}`,
+            "사용자의 답변:",
+            formatInputForPrompt(input),
             "",
-            `새로고침된 기억(회고문):`,
+            "정리된 회고문:",
             input.generated,
           ].join("\n"),
         },

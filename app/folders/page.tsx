@@ -18,7 +18,7 @@ export default async function FoldersPage() {
   const folders: FolderRow[] = data ?? [];
 
   return (
-    <BrowserWindow title="새로고침">
+    <BrowserWindow title="새로고침" showSignOut>
       <div className="flex w-full flex-col items-center gap-12">
         <div className="text-center text-[15px] leading-relaxed text-[#503836]">
           <p>당신이 가장 후회하는 기억을 폴더로 만들어요</p>

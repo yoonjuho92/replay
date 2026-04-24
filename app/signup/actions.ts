@@ -23,7 +23,15 @@ export async function signupAction(
   }
 
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ?? "https://saelab.onrender.com";
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: `${siteUrl}/auth/confirm`,
+    },
+  });
 
   if (error) {
     return { error: error.message };

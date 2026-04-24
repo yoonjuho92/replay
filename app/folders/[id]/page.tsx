@@ -1,7 +1,8 @@
 import { notFound, redirect } from "next/navigation";
 import { BrowserWindow } from "@/app/_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
-import type { MemoryChoices } from "./actions";
+import type { MemoryChoices } from "./inputs";
+import { EMPTY_INPUT, INPUT_FIELDS, type MemoryInput } from "./inputs";
 import { MemoryForm } from "./_components/MemoryForm";
 
 function daysSince(isoDate: string): number {
@@ -24,9 +25,7 @@ export default async function MemoryPage({ params }: PageProps) {
 
   const { data: folder } = await supabase
     .from("folders")
-    .select(
-      "id,name,memory_date,memory_text,memory_people,memory_place,memory_outcome,memory_generated,memory_choices",
-    )
+    .select("id,name,memory_date,memory_inputs,memory_generated,memory_choices")
     .eq("id", id)
     .maybeSingle();
 
@@ -34,19 +33,21 @@ export default async function MemoryPage({ params }: PageProps) {
 
   const days = folder.memory_date ? daysSince(folder.memory_date) : null;
   const initialChoices = (folder.memory_choices as MemoryChoices | null) ?? null;
+  const savedInputs = folder.memory_inputs as Partial<MemoryInput> | null;
+  const initialInputs: MemoryInput = INPUT_FIELDS.reduce(
+    (acc, key) => ({ ...acc, [key]: savedInputs?.[key] ?? "" }),
+    EMPTY_INPUT,
+  );
 
   return (
-    <BrowserWindow title="새로고침">
+    <BrowserWindow title="새로고침" showSignOut>
       <div className="flex w-full flex-col gap-6">
         <MemoryForm
           folderId={folder.id}
           folderName={folder.name}
           days={days}
           initial={{
-            regret: folder.memory_text ?? "",
-            people: folder.memory_people ?? "",
-            place: folder.memory_place ?? "",
-            outcome: folder.memory_outcome ?? "",
+            ...initialInputs,
             generated: folder.memory_generated ?? "",
           }}
           initialChoices={initialChoices}

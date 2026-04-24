@@ -3,11 +3,13 @@ import type { ReactNode } from "react";
 type BrowserWindowProps = {
   title?: string;
   children: ReactNode;
+  showSignOut?: boolean;
 };
 
 export function BrowserWindow({
   title = "새로고침",
   children,
+  showSignOut = false,
 }: BrowserWindowProps) {
   return (
     <div className="w-full max-w-[80vw] overflow-hidden rounded-2xl border-2 border-[#CCE7D7] bg-[#BADECB] shadow-[6px_6px_0_#503836]">
@@ -20,6 +22,16 @@ export function BrowserWindow({
         <span className="absolute left-1/2 -translate-x-1/2 text-[15px] font-bold text-[#503836]">
           {title}
         </span>
+        {showSignOut && (
+          <form action="/auth/signout" method="post" className="ml-auto">
+            <button
+              type="submit"
+              className="text-sm font-bold text-[#503836] transition-opacity hover:opacity-70"
+            >
+              로그아웃
+            </button>
+          </form>
+        )}
       </div>
 
       <div className="flex h-10 items-center gap-6 border-b-2 border-[#CCE7D7] px-5 text-[15px] text-[#503836]">
