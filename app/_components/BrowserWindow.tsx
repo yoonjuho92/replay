@@ -4,12 +4,14 @@ type BrowserWindowProps = {
   title?: string;
   children: ReactNode;
   showSignOut?: boolean;
+  fill?: boolean;
 };
 
 export function BrowserWindow({
   title = "새로고침",
   children,
   showSignOut = false,
+  fill = false,
 }: BrowserWindowProps) {
   return (
     <div className="w-full max-w-[80vw] overflow-hidden rounded-2xl border-2 border-[#CCE7D7] bg-[#BADECB] shadow-[6px_6px_0_#503836]">
@@ -54,9 +56,17 @@ export function BrowserWindow({
         </span>
       </div>
 
-      <div className="flex h-[65vh] items-center justify-center bg-[#F3F7FA] px-8">
-        {children}
-      </div>
+      {fill ? (
+        <div className="h-[65vh] bg-[#F3F7FA]">
+          <div className="flex h-full flex-col px-8 py-8">{children}</div>
+        </div>
+      ) : (
+        <div className="h-[65vh] overflow-y-auto bg-[#F3F7FA]">
+          <div className="flex min-h-full flex-col items-center justify-center px-8 py-8">
+            {children}
+          </div>
+        </div>
+      )}
 
       <div className="h-8 border-t-2 border-[#CCE7D7]" />
     </div>

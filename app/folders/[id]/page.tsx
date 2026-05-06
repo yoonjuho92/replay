@@ -13,10 +13,16 @@ function daysSince(isoDate: string): number {
 
 type PageProps = {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ phase?: string }>;
 };
 
-export default async function MemoryPage({ params }: PageProps) {
+export default async function MemoryPage({ params, searchParams }: PageProps) {
   const { id } = await params;
+  const { phase } = await searchParams;
+  const initialPhase: "input" | "review" | "choices" | "refresh" =
+    phase === "review" || phase === "choices" || phase === "refresh"
+      ? phase
+      : "input";
   const supabase = await createClient();
   const {
     data: { user },
@@ -51,6 +57,7 @@ export default async function MemoryPage({ params }: PageProps) {
             generated: folder.memory_generated ?? "",
           }}
           initialChoices={initialChoices}
+          initialPhase={initialPhase}
         />
       </div>
     </BrowserWindow>

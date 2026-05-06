@@ -8,6 +8,7 @@ import {
   generateAndSaveChoices,
   generateAndSaveStory,
   generateNarrative,
+  saveInputs,
   saveMemory,
   saveMemoryChoices,
   selectChoice,
@@ -86,6 +87,7 @@ type Props = {
   days: number | null;
   initial: MemorySave;
   initialChoices: MemoryChoices | null;
+  initialPhase?: Phase;
 };
 
 function FolderHeading({
@@ -114,9 +116,10 @@ export function MemoryForm({
   days,
   initial,
   initialChoices,
+  initialPhase = "input",
 }: Props) {
-  const [phase, setPhase] = useState<Phase>("input");
-  const [step, setStep] = useState(1);
+  const [phase, setPhase] = useState<Phase>(initialPhase);
+  const [step, setStep] = useState(initialPhase === "input" ? 1 : TOTAL_STEPS);
   const [answers, setAnswers] = useState<MemoryInput>(() => {
     const next: MemoryInput = { ...EMPTY_INPUT };
     for (const key of INPUT_FIELDS) {
@@ -151,6 +154,7 @@ export function MemoryForm({
 
   const handleInputNext = async () => {
     setError(null);
+    saveInputs(folderId, answers).catch(() => {});
     if (step < TOTAL_STEPS) {
       setStep(step + 1);
       return;
@@ -183,6 +187,7 @@ export function MemoryForm({
 
   const handleInputPrev = () => {
     setError(null);
+    saveInputs(folderId, answers).catch(() => {});
     setStep(step - 1);
   };
 
@@ -331,7 +336,7 @@ export function MemoryForm({
     return (
       <>
         {isLoading && <LoadingOverlay message="새로고침하는 중입니다..." />}
-        <div className="flex w-full flex-col gap-4 text-[#503836]">
+        <div className="flex w-full flex-col gap-4 text-[#503836] animate-[pageEnter_400ms_ease-out_both]">
           <h2 className="text-lg font-bold leading-snug">
             당신은 과거의 어떤 선택을 어떻게 새로고침 하고싶나요?
             <br />
@@ -388,7 +393,7 @@ export function MemoryForm({
     return (
       <>
         {isLoading && <LoadingOverlay message="새로고침하는 중입니다..." />}
-        <div className="flex w-full flex-col gap-4 text-[#503836]">
+        <div className="flex w-full flex-col gap-4 text-[#503836] animate-[pageEnter_400ms_ease-out_both]">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-bold">
               어떤 선택으로 새로고침 할까요?
@@ -454,7 +459,7 @@ export function MemoryForm({
     return (
       <>
         {isLoading && <LoadingOverlay message="새로고침하는 중입니다..." />}
-        <div className="flex w-full flex-col gap-4 text-[#503836]">
+        <div className="flex w-full flex-col gap-4 text-[#503836] animate-[pageEnter_400ms_ease-out_both]">
           <FolderHeading folderName={folderName} days={days} />
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-lg font-bold">
@@ -512,14 +517,36 @@ export function MemoryForm({
     return (
       <>
         {isLoading && <LoadingOverlay message="새로고침하는 중입니다..." />}
-        <div className="flex w-full flex-col gap-6 text-[#503836]">
+        <div className="relative flex w-full flex-col gap-6 text-[#503836]">
           <FolderHeading folderName={folderName} days={days} />
-          <div className="flex flex-col items-center gap-2 py-10 text-center text-lg leading-loose">
-            <p>지금부터 과거로 돌아가 선택을 되돌리겠습니다.</p>
-            <p>선택을 되돌리기에 앞서 그날의 순간을 자세히 기록해 보아요.</p>
+          <div className="relative flex flex-col items-center gap-3 overflow-hidden py-12 text-center text-lg leading-loose">
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 z-0 animate-[flashWhite_900ms_ease-out_both] bg-white"
+            />
+            <Image
+              aria-hidden
+              src="/rewind.png"
+              alt=""
+              width={160}
+              height={160}
+              className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-40 w-40 -translate-x-1/2 -translate-y-1/2 animate-[spinRewind_1600ms_ease-in-out_both]"
+            />
+            <p
+              className="relative z-10 animate-[fadeUpBlur_900ms_ease-out_300ms_both]"
+              style={{ animationFillMode: "both" }}
+            >
+              지금부터 과거로 돌아가 선택을 되돌리겠습니다.
+            </p>
+            <p
+              className="relative z-10 animate-[fadeUpBlur_900ms_ease-out_1100ms_both]"
+              style={{ animationFillMode: "both" }}
+            >
+              선택을 되돌리기에 앞서 그날의 순간을 자세히 기록해 보아요.
+            </p>
           </div>
           {error && <p className="text-sm text-[#B0413E]">{error}</p>}
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2 animate-[timeWarpIn_900ms_ease-out_1700ms_both]">
             <button
               type="button"
               onClick={handleInputPrev}
@@ -547,11 +574,22 @@ export function MemoryForm({
     return (
       <>
         {isLoading && <LoadingOverlay message="새로고침하는 중입니다..." />}
-        <div className="flex w-full flex-col gap-4 text-[#503836]">
+        <div
+          key={step}
+          className="flex w-full flex-col gap-4 text-[#503836] animate-[pageEnter_400ms_ease-out_both]"
+        >
           <FolderHeading folderName={folderName} days={days} />
-          <p className="text-sm font-bold text-[#5DBFA8]">
-            {displayIndex} / {TOTAL_QUESTIONS}
-          </p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold text-[#5DBFA8]">
+              {displayIndex} / {TOTAL_QUESTIONS}
+            </p>
+            <Link
+              href={`/folders/${folderId}/agent`}
+              className="text-sm font-bold text-[#00A796] transition-opacity hover:opacity-80"
+            >
+              에이전트와 대화하기 →
+            </Link>
+          </div>
           <h2 className="text-lg font-bold">{question}</h2>
           <input
             type="text"

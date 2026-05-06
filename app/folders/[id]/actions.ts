@@ -43,6 +43,35 @@ function formatFolderContext(ctx: {
   ].join("\n");
 }
 
+export async function saveInputs(
+  folderId: string,
+  inputs: MemoryInput,
+): Promise<ActionResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const normalized: MemoryInput = INPUT_FIELDS.reduce(
+    (acc, key) => ({ ...acc, [key]: inputs[key] ?? "" }),
+    {} as MemoryInput,
+  );
+
+  const { error } = await supabase
+    .from("folders")
+    .update({
+      memory_inputs: normalized,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", folderId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath(`/folders/${folderId}`);
+  return { error: null };
+}
+
 export async function saveMemory(
   folderId: string,
   input: MemorySave,
