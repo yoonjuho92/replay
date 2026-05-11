@@ -9,16 +9,10 @@ import { chatWithAgent, type AgentMessage } from "../agent-actions";
 type Props = {
   folderId: string;
   folderName: string;
-  days: number | null;
   initialGreeting: string;
 };
 
-export function AgentChat({
-  folderId,
-  folderName,
-  days,
-  initialGreeting,
-}: Props) {
+export function AgentChat({ folderId, folderName, initialGreeting }: Props) {
   const [messages, setMessages] = useState<AgentMessage[]>([
     { role: "assistant", content: initialGreeting },
   ]);
@@ -32,8 +26,8 @@ export function AgentChat({
   useEffect(() => {
     if (!completing) return;
     const timer = setTimeout(() => {
-      router.push(`/folders/${folderId}?phase=review`);
-    }, 2600);
+      router.push(`/folders/${folderId}/write`);
+    }, 2200);
     return () => clearTimeout(timer);
   }, [completing, folderId, router]);
 
@@ -43,7 +37,7 @@ export function AgentChat({
     }
   }, [messages, pending]);
 
-  const handleSend = (e?: React.FormEvent) => {
+  const handleSend = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
     const text = input.trim();
     if (!text || pending) return;
@@ -72,12 +66,6 @@ export function AgentChat({
       <div className="relative flex h-full w-full flex-col gap-6 text-[#503836]">
         <h1 className="shrink-0 text-2xl font-bold leading-snug">
           <span className="text-[#5DBFA8]">{folderName}</span>
-          {days !== null && (
-            <span className="text-[#503836]">
-              {" "}
-              으로부터 {days.toLocaleString()}일째…
-            </span>
-          )}
         </h1>
         <div className="relative flex flex-1 flex-col items-center justify-center gap-3 overflow-hidden text-center text-lg leading-loose">
           <span
@@ -93,10 +81,10 @@ export function AgentChat({
             className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-40 w-40 -translate-x-1/2 -translate-y-1/2 animate-[spinRewind_1600ms_ease-in-out_both]"
           />
           <p className="relative z-10 animate-[fadeUpBlur_900ms_ease-out_300ms_both]">
-            지금부터 과거로 돌아가 선택을 되돌리겠습니다.
+            이제 당신의 이야기를 글로 옮겨 볼게요.
           </p>
           <p className="relative z-10 animate-[fadeUpBlur_900ms_ease-out_1100ms_both]">
-            그날의 풍경을 다시 펼쳐 볼게요.
+            글쓰기 화면으로 이동합니다.
           </p>
         </div>
       </div>
@@ -107,12 +95,6 @@ export function AgentChat({
     <div className="flex h-full w-full min-h-0 flex-col gap-4 text-[#503836]">
       <h1 className="shrink-0 text-2xl font-bold leading-snug">
         <span className="text-[#5DBFA8]">{folderName}</span>
-        {days !== null && (
-          <span className="text-[#503836]">
-            {" "}
-            으로부터 {days.toLocaleString()}일째…
-          </span>
-        )}
       </h1>
       <div className="flex shrink-0 items-center justify-between gap-2">
         <p className="text-sm font-bold text-[#5DBFA8]">에이전트와 대화하기</p>

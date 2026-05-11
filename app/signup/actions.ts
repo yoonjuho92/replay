@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { ensureSystemFolders } from "../folders/seed";
 import type { AuthFormState } from "../login/actions";
 
 export async function signupAction(
@@ -41,7 +42,8 @@ export async function signupAction(
     return { error: "이미 가입된 이메일이에요." };
   }
 
-  if (data.session) {
+  if (data.session && data.user) {
+    await ensureSystemFolders(supabase, data.user.id);
     redirect("/folders");
   }
 

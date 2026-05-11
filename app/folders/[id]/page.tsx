@@ -1,28 +1,16 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { BrowserWindow } from "@/app/_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
-import type { MemoryChoices } from "./inputs";
-import { EMPTY_INPUT, INPUT_FIELDS, type MemoryInput } from "./inputs";
+import { getCategoryByName, normalizeAnswers } from "../categories";
 import { MemoryForm } from "./_components/MemoryForm";
-
-function daysSince(isoDate: string): number {
-  const target = new Date(`${isoDate}T00:00:00`);
-  const diffMs = Date.now() - target.getTime();
-  return Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-}
 
 type PageProps = {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ phase?: string }>;
 };
 
-export default async function MemoryPage({ params, searchParams }: PageProps) {
+export default async function MemoryPage({ params }: PageProps) {
   const { id } = await params;
-  const { phase } = await searchParams;
-  const initialPhase: "input" | "review" | "choices" | "refresh" =
-    phase === "review" || phase === "choices" || phase === "refresh"
-      ? phase
-      : "input";
   const supabase = await createClient();
   const {
     data: { user },
@@ -31,18 +19,40 @@ export default async function MemoryPage({ params, searchParams }: PageProps) {
 
   const { data: folder } = await supabase
     .from("folders")
-    .select("id,name,memory_date,memory_inputs,memory_generated,memory_choices")
+    .select("id,name,memory_inputs")
     .eq("id", id)
     .maybeSingle();
 
   if (!folder) notFound();
+  const category = getCategoryByName(folder.name);
+  if (!category) notFound();
 
-  const days = folder.memory_date ? daysSince(folder.memory_date) : null;
-  const initialChoices = (folder.memory_choices as MemoryChoices | null) ?? null;
-  const savedInputs = folder.memory_inputs as Partial<MemoryInput> | null;
-  const initialInputs: MemoryInput = INPUT_FIELDS.reduce(
-    (acc, key) => ({ ...acc, [key]: savedInputs?.[key] ?? "" }),
-    EMPTY_INPUT,
+  if (!category.available) {
+    return (
+      <BrowserWindow title="새로고침" showSignOut>
+        <div className="flex w-full flex-col items-center gap-6 text-center text-[#503836]">
+          <h1 className="text-2xl font-bold leading-snug">
+            <span className="text-[#5DBFA8]">{folder.name}</span>
+          </h1>
+          <p className="text-[15px] leading-relaxed">
+            이 폴더는 아직 준비 중이에요.
+            <br />
+            곧 함께 풀어볼 수 있도록 만들고 있어요.
+          </p>
+          <Link
+            href="/folders"
+            className="rounded-md border-2 border-[#503836] bg-white px-6 py-2 text-base font-bold text-[#503836] transition-colors hover:bg-[#F3F7FA]"
+          >
+            폴더로 돌아가기
+          </Link>
+        </div>
+      </BrowserWindow>
+    );
+  }
+
+  const answers = normalizeAnswers(
+    category,
+    (folder.memory_inputs ?? {}) as Record<string, unknown>,
   );
 
   return (
@@ -51,13 +61,8 @@ export default async function MemoryPage({ params, searchParams }: PageProps) {
         <MemoryForm
           folderId={folder.id}
           folderName={folder.name}
-          days={days}
-          initial={{
-            ...initialInputs,
-            generated: folder.memory_generated ?? "",
-          }}
-          initialChoices={initialChoices}
-          initialPhase={initialPhase}
+          category={category}
+          initialAnswers={answers}
         />
       </div>
     </BrowserWindow>
