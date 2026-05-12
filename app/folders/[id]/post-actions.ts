@@ -255,17 +255,11 @@ export async function generateSceneImage(
     const result = await openai.images.generate({
       model: "gpt-image-2",
       prompt: buildImagePrompt(scene, draft),
+      quality: "low",
       size: "1024x1024",
-      n: 1,
+      moderation: "low",
     });
     b64 = result.data?.[0]?.b64_json;
-    if (!b64) {
-      const url = result.data?.[0]?.url;
-      if (url) {
-        const fetched = await fetch(url);
-        b64 = Buffer.from(await fetched.arrayBuffer()).toString("base64");
-      }
-    }
   } catch (e) {
     return {
       url: null,
@@ -281,12 +275,10 @@ export async function generateSceneImage(
 
   const buffer = Buffer.from(b64, "base64");
   const path = objectPath(user.id, folder.id, sceneIndex);
-  const upload = await supabase.storage
-    .from(BUCKET)
-    .upload(path, buffer, {
-      contentType: "image/png",
-      upsert: true,
-    });
+  const upload = await supabase.storage.from(BUCKET).upload(path, buffer, {
+    contentType: "image/png",
+    upsert: true,
+  });
   if (upload.error) {
     const msg = upload.error.message;
     if (msg.toLowerCase().includes("bucket not found")) {
@@ -331,9 +323,7 @@ export async function loadPostState(folderId: string): Promise<PostState> {
 
   const { data: folder } = await supabase
     .from("folders")
-    .select(
-      "id, name, memory_generated, image_scenes, image_target_count",
-    )
+    .select("id, name, memory_generated, image_scenes, image_target_count")
     .eq("id", folderId)
     .maybeSingle();
   if (!folder) {
