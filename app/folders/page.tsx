@@ -75,7 +75,7 @@ export default async function FoldersPage() {
   return (
     <BrowserWindow title="새로고침" showSignOut>
       <div className="flex w-full flex-col items-center gap-12">
-        <div className="text-center text-[15px] leading-relaxed text-[#503836]">
+        <div className="text-center text-[0.9375rem] leading-relaxed text-[#503836]">
           <p>당신의 기억을 다섯 개의 폴더에 모아요</p>
           <p>후회, 성취, 사랑, 미움과 관계, 친구</p>
           <p>오늘은 어떤 폴더부터 열어 볼까요?</p>

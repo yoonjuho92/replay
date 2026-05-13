@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { Noto_Sans_KR } from "next/font/google";
 import "./globals.css";
+import { FontSizeControls } from "./_components/FontSizeControls";
 
 const notoSansKR = Noto_Sans_KR({
   variable: "--font-noto-sans-kr",
@@ -45,6 +46,7 @@ export default function RootLayout({
           <div className="relative z-10 flex min-h-screen w-full items-center justify-center p-8">
             {children}
           </div>
+          <FontSizeControls />
         </main>
       </body>
     </html>

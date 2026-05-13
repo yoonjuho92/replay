@@ -2,9 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { PROFILE_BUCKET, findProfilePhoto } from "@/lib/profile-photo";
 import {
   formatAnswersForPrompt,
   getCategoryByName,
@@ -27,18 +28,32 @@ function objectPath(userId: string, folderId: string, sceneIndex: number) {
   return `${userId}/${folderId}-${sceneIndex}.png`;
 }
 
-function buildImagePrompt(scene: Scene, draftExcerpt: string): string {
-  return [
+function buildImagePrompt(
+  scene: Scene,
+  draftExcerpt: string,
+  hasReferencePhoto: boolean,
+): string {
+  const lines = [
     "A single hand-drawn illustration in a delicate pen-and-ink style with visible pressure variation in the line work, like a fine writer's notebook sketch.",
     "Monochrome ink (warm dark brown ink on warm off-white paper). No text, no captions, no signatures.",
     "Composition: minimalist, intimate, slightly cinematic, with breathing white space and soft cross-hatching for tone. Square 1:1.",
+  ];
+  if (hasReferencePhoto) {
+    lines.push(
+      "",
+      "Face reference: the attached photo is the user's selfie. The figure depicted in this illustration is the same person. Preserve their facial identity (face shape, eye shape, nose, mouth, hairline), translated faithfully into hand-drawn pen-and-ink lines — not a photographic likeness.",
+      "Age: render the person at the age implied by the scene and the memory excerpt below, which may be much younger (child, teenager, young adult) or older than the reference photo. Adjust hair length/style, skin smoothness, posture, and clothing accordingly to fit the era, while keeping the underlying bone structure and identifying features recognizable.",
+    );
+  }
+  lines.push(
     "",
     "Scene:",
     scene.prompt,
     "",
     "Source memory excerpt (tone reference only — depict the scene above, do not invent details beyond it):",
     draftExcerpt.slice(0, 500),
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 const SCENE_PLAN_SYSTEM_PROMPT = [
@@ -106,6 +121,22 @@ async function planScenesWithLLM(args: {
     throw new Error("장면 분석 결과가 비어 있어요.");
   }
   return cleaned;
+}
+
+async function loadProfileReference(
+  supabase: SupabaseClient,
+  userId: string,
+) {
+  const existing = await findProfilePhoto(supabase, userId);
+  if (!existing) return null;
+  const { data, error } = await supabase.storage
+    .from(PROFILE_BUCKET)
+    .download(existing.path);
+  if (error || !data) return null;
+  const buffer = Buffer.from(await data.arrayBuffer());
+  const mime = data.type || "image/png";
+  const ext = existing.path.split(".").pop() ?? "png";
+  return toFile(buffer, `profile.${ext}`, { type: mime });
 }
 
 async function removeFolderObjects(
@@ -250,16 +281,30 @@ export async function generateSceneImage(
   const scene = scenes[sceneIndex];
   const draft = ((folder.memory_generated as string | null) ?? "").trim();
 
+  const reference = await loadProfileReference(supabase, user.id);
+  const prompt = buildImagePrompt(scene, draft, reference !== null);
+
   let b64: string | undefined;
   try {
-    const result = await openai.images.generate({
-      model: "gpt-image-2",
-      prompt: buildImagePrompt(scene, draft),
-      quality: "low",
-      size: "1024x1024",
-      moderation: "low",
-    });
-    b64 = result.data?.[0]?.b64_json;
+    if (reference) {
+      const result = await openai.images.edit({
+        model: "gpt-image-2",
+        image: reference,
+        prompt,
+        quality: "low",
+        size: "1024x1024",
+      });
+      b64 = result.data?.[0]?.b64_json;
+    } else {
+      const result = await openai.images.generate({
+        model: "gpt-image-2",
+        prompt,
+        quality: "low",
+        size: "1024x1024",
+        moderation: "low",
+      });
+      b64 = result.data?.[0]?.b64_json;
+    }
   } catch (e) {
     return {
       url: null,
@@ -292,8 +337,10 @@ export async function generateSceneImage(
   }
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path);
-  revalidatePath(`/folders/${folder.id}/post`);
-  return { url: pub?.publicUrl ?? null, error: null };
+  const publicUrl = pub?.publicUrl
+    ? `${pub.publicUrl}?v=${Date.now()}`
+    : null;
+  return { url: publicUrl, error: null };
 }
 
 export type PostState = {
@@ -359,7 +406,13 @@ export async function loadPostState(folderId: string): Promise<PostState> {
         const { data: pub } = supabase.storage
           .from(BUCKET)
           .getPublicUrl(`${user.id}/${f.name}`);
-        urls[idx] = pub?.publicUrl ?? null;
+        if (pub?.publicUrl) {
+          const updatedAt = f.updated_at ?? f.created_at ?? "";
+          const v = updatedAt
+            ? new Date(updatedAt).getTime() || Date.now()
+            : Date.now();
+          urls[idx] = `${pub.publicUrl}?v=${v}`;
+        }
       }
     }
   }

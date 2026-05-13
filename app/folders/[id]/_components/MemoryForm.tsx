@@ -13,22 +13,12 @@ import { LoadingOverlay } from "./LoadingOverlay";
 
 type Props = {
   folderId: string;
-  folderName: string;
   category: CategoryConfig;
   initialAnswers: Record<string, string>;
 };
 
-function FolderHeading({ folderName }: { folderName: string }) {
-  return (
-    <h1 className="text-2xl font-bold leading-snug">
-      <span className="text-[#5DBFA8]">{folderName}</span>
-    </h1>
-  );
-}
-
 export function MemoryForm({
   folderId,
-  folderName,
   category,
   initialAnswers,
 }: Props) {
@@ -97,7 +87,6 @@ export function MemoryForm({
         key={step}
         className="flex w-full flex-col gap-4 text-[#503836] animate-[pageEnter_400ms_ease-out_both]"
       >
-        <FolderHeading folderName={folderName} />
         <div className="flex items-center justify-between gap-2">
           <p className="text-sm font-bold text-[#5DBFA8]">
             {step} / {TOTAL}
@@ -122,19 +111,14 @@ export function MemoryForm({
           value={answers[question.field] ?? ""}
           onChange={(event) => updateField(question.field, event.target.value)}
           rows={3}
-          className="w-full resize-y rounded border-2 border-[#CCE7D7] bg-white px-4 py-3 text-[15px] leading-relaxed text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none"
+          className="w-full resize-y rounded border-2 border-[#CCE7D7] bg-white px-4 py-3 text-[0.9375rem] leading-relaxed text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none"
           placeholder="자유롭게 답해 주세요."
           autoFocus
         />
         {error && <p className="text-sm text-[#B0413E]">{error}</p>}
         <div className="flex justify-between gap-2">
           {step === 1 ? (
-            <Link
-              href="/folders"
-              className="rounded-md border-2 border-[#503836] bg-white px-6 py-2 text-base font-bold text-[#503836] transition-colors hover:bg-[#F3F7FA]"
-            >
-              폴더로
-            </Link>
+            <span />
           ) : (
             <button
               type="button"

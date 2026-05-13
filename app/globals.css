@@ -4,6 +4,14 @@
   --font-sans: var(--font-noto-sans-kr);
 }
 
+:root {
+  --font-scale: 1;
+}
+
+html {
+  font-size: calc(16px * var(--font-scale));
+}
+
 @keyframes loadingWave {
   0%,
   100% {

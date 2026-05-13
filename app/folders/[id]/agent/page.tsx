@@ -56,10 +56,9 @@ export default async function AgentPage({ params }: PageProps) {
   const initialGreeting = buildInitialGreeting(category, answers);
 
   return (
-    <BrowserWindow title="새로고침" showSignOut fill>
+    <BrowserWindow title={folder.name} showSignOut fill>
       <AgentChat
         folderId={folder.id}
-        folderName={folder.name}
         initialGreeting={initialGreeting}
       />
     </BrowserWindow>

@@ -14,6 +14,7 @@ type Props = {
 type SlotState = {
   url: string | null;
   error: string | null;
+  regenerating?: boolean;
 };
 
 export function PostView({
@@ -47,6 +48,21 @@ export function PostView({
       });
     });
   }, [folderId, scenes, initialUrls]);
+
+  function regenerate(i: number) {
+    setSlots((prev) => {
+      const next = [...prev];
+      next[i] = { url: null, error: null, regenerating: true };
+      return next;
+    });
+    generateSceneImage(folderId, i).then((res) => {
+      setSlots((prev) => {
+        const next = [...prev];
+        next[i] = { url: res.url, error: res.error, regenerating: false };
+        return next;
+      });
+    });
+  }
 
   useEffect(() => {
     const el = scrollerRef.current;
@@ -113,6 +129,14 @@ export function PostView({
                 {i + 1}/{scenes.length}
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => regenerate(i)}
+              disabled={slots[i]?.regenerating}
+              className="absolute left-3 top-3 rounded-full border-2 border-[#503836] bg-white/90 px-2 py-0.5 text-xs font-bold text-[#503836] transition-colors hover:bg-white disabled:opacity-60"
+            >
+              {slots[i]?.regenerating ? "그리는 중..." : "다시 그리기"}
+            </button>
           </div>
         ))}
       </div>
@@ -134,7 +158,7 @@ export function PostView({
         <p className="text-xs font-bold text-[#5DBFA8]">
           {scenes[activeIdx]?.caption}
         </p>
-        <p className="whitespace-pre-wrap text-[14px] leading-relaxed text-[#503836]">
+        <p className="whitespace-pre-wrap text-[0.875rem] leading-relaxed text-[#503836]">
           {draft || "(글이 비어 있어요)"}
         </p>
       </div>

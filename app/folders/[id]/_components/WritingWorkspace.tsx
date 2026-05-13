@@ -10,6 +10,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { MicButton } from "@/app/_components/MicButton";
 import { saveDraft } from "../actions";
 import {
   chatWithWritingCoach,
@@ -20,7 +21,6 @@ import { LoadingOverlay } from "./LoadingOverlay";
 
 type Props = {
   folderId: string;
-  folderName: string;
   initialDraft: string;
   initialGreeting: string;
   hasExistingImage: boolean;
@@ -31,7 +31,6 @@ const AUTOSAVE_DEBOUNCE_MS = 700;
 
 export function WritingWorkspace({
   folderId,
-  folderName,
   initialDraft,
   initialGreeting,
   hasExistingImage,
@@ -172,19 +171,14 @@ export function WritingWorkspace({
         <LoadingOverlay message="어떤 장면을 그릴지 고르고 있어요..." />
       )}
       <div className="flex h-full w-full min-h-0 flex-col gap-4 text-[#503836]">
-        <div className="flex shrink-0 items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold leading-snug">
-            <span className="text-[#5DBFA8]">{folderName}</span>
-          </h1>
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-[#503836]/60">{saveStatusLabel}</span>
-            <Link
-              href={`/folders/${folderId}`}
-              className="text-sm font-bold text-[#00A796] transition-opacity hover:opacity-80"
-            >
-              ← 질문 다시 보기
-            </Link>
-          </div>
+        <div className="flex shrink-0 items-center justify-end gap-3">
+          <span className="text-xs text-[#503836]/60">{saveStatusLabel}</span>
+          <Link
+            href={`/folders/${folderId}`}
+            className="text-sm font-bold text-[#00A796] transition-opacity hover:opacity-80"
+          >
+            ← 질문 다시 보기
+          </Link>
         </div>
         <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
           <div className="flex min-h-0 flex-col gap-2">
@@ -193,7 +187,7 @@ export function WritingWorkspace({
               value={draft}
               onChange={(event) => handleDraftChange(event.target.value)}
               placeholder="여기에 당신의 이야기를 직접 적어 보세요. 오른쪽 에이전트에게 물어보면서 함께 다듬어도 좋아요."
-              className="flex-1 resize-none rounded border-2 border-[#CCE7D7] bg-white p-4 text-[15px] leading-relaxed text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none"
+              className="flex-1 resize-none rounded border-2 border-[#CCE7D7] bg-white p-4 text-[0.9375rem] leading-relaxed text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none"
             />
           </div>
           <div className="flex min-h-0 flex-col gap-2">
@@ -218,14 +212,20 @@ export function WritingWorkspace({
             {chatError && (
               <p className="text-sm text-[#B0413E]">{chatError}</p>
             )}
-            <form onSubmit={handleSendChat} className="flex gap-2">
+            <form onSubmit={handleSendChat} className="flex items-stretch gap-2">
               <input
                 type="text"
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 disabled={pending}
-                className="flex-1 rounded border-2 border-[#CCE7D7] bg-white px-3 py-2 text-[15px] text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none disabled:opacity-60"
+                className="flex-1 rounded border-2 border-[#CCE7D7] bg-white px-3 py-2 text-[0.9375rem] text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none disabled:opacity-60"
                 placeholder="에이전트에게 물어보세요"
+              />
+              <MicButton
+                disabled={pending}
+                onTranscript={(text) =>
+                  setChatInput((prev) => (prev ? `${prev} ${text}` : text))
+                }
               />
               <button
                 type="submit"
@@ -276,7 +276,7 @@ function ChatBubble({
       className={`flex max-w-[88%] flex-col gap-1 ${isUser ? "self-end items-end" : "self-start items-start"}`}
     >
       <div
-        className={`whitespace-pre-wrap rounded-2xl border-2 px-4 py-2 text-[14px] leading-relaxed ${
+        className={`whitespace-pre-wrap rounded-2xl border-2 px-4 py-2 text-[0.875rem] leading-relaxed ${
           isUser
             ? "border-[#503836] bg-[#503836] text-white"
             : "border-[#CCE7D7] bg-[#F3F7FA] text-[#503836]"

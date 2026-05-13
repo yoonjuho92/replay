@@ -4,15 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { MicButton } from "@/app/_components/MicButton";
 import { chatWithAgent, type AgentMessage } from "../agent-actions";
 
 type Props = {
   folderId: string;
-  folderName: string;
   initialGreeting: string;
 };
 
-export function AgentChat({ folderId, folderName, initialGreeting }: Props) {
+export function AgentChat({ folderId, initialGreeting }: Props) {
   const [messages, setMessages] = useState<AgentMessage[]>([
     { role: "assistant", content: initialGreeting },
   ]);
@@ -64,9 +64,6 @@ export function AgentChat({ folderId, folderName, initialGreeting }: Props) {
   if (completing) {
     return (
       <div className="relative flex h-full w-full flex-col gap-6 text-[#503836]">
-        <h1 className="shrink-0 text-2xl font-bold leading-snug">
-          <span className="text-[#5DBFA8]">{folderName}</span>
-        </h1>
         <div className="relative flex flex-1 flex-col items-center justify-center gap-3 overflow-hidden text-center text-lg leading-loose">
           <span
             aria-hidden
@@ -93,9 +90,6 @@ export function AgentChat({ folderId, folderName, initialGreeting }: Props) {
 
   return (
     <div className="flex h-full w-full min-h-0 flex-col gap-4 text-[#503836]">
-      <h1 className="shrink-0 text-2xl font-bold leading-snug">
-        <span className="text-[#5DBFA8]">{folderName}</span>
-      </h1>
       <div className="flex shrink-0 items-center justify-between gap-2">
         <p className="text-sm font-bold text-[#5DBFA8]">에이전트와 대화하기</p>
         <Link
@@ -121,15 +115,21 @@ export function AgentChat({ folderId, folderName, initialGreeting }: Props) {
         )}
       </div>
       {error && <p className="shrink-0 text-sm text-[#B0413E]">{error}</p>}
-      <form onSubmit={handleSend} className="flex shrink-0 gap-2">
+      <form onSubmit={handleSend} className="flex shrink-0 items-stretch gap-2">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           disabled={pending}
-          className="flex-1 rounded border-2 border-[#CCE7D7] bg-white px-4 py-3 text-[15px] text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none disabled:opacity-60"
+          className="flex-1 rounded border-2 border-[#CCE7D7] bg-white px-4 py-3 text-[0.9375rem] text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none disabled:opacity-60"
           placeholder="자유롭게 답해 주세요."
           autoFocus
+        />
+        <MicButton
+          disabled={pending}
+          onTranscript={(text) =>
+            setInput((prev) => (prev ? `${prev} ${text}` : text))
+          }
         />
         <button
           type="submit"
@@ -156,7 +156,7 @@ function ChatBubble({
       className={`flex max-w-[85%] flex-col gap-1 ${isUser ? "self-end items-end" : "self-start items-start"}`}
     >
       <div
-        className={`whitespace-pre-wrap rounded-2xl border-2 px-4 py-2 text-[15px] leading-relaxed ${
+        className={`whitespace-pre-wrap rounded-2xl border-2 px-4 py-2 text-[0.9375rem] leading-relaxed ${
           isUser
             ? "border-[#503836] bg-[#503836] text-white"
             : "border-[#CCE7D7] bg-[#F3F7FA] text-[#503836]"

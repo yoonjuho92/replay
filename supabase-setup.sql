@@ -23,7 +23,8 @@ on conflict (id) do update set public = true;
 
 -- 3. Storage RLS: let each authenticated user upload, read, update, and delete
 --    objects under their own user-id prefix in the `illustrations` bucket.
---    (Files are saved at "<user_id>/<folder_id>-<timestamp>.png".)
+--    (Scene images live at "<user_id>/<folder_id>-<sceneIndex>.png".
+--     The user's reference selfie lives at "<user_id>/profile.<ext>".)
 do $$ begin
   if not exists (
     select 1 from pg_policies

@@ -41,6 +41,9 @@ function FolderItem({ folder }: { folder: FolderRow }) {
       {!folder.available && (
         <span className="text-xs font-bold text-[#503836]/60">준비 중</span>
       )}
+      {folder.available && folder.isFinalized && (
+        <span className="text-xs font-bold text-[#5DBFA8]">완료</span>
+      )}
     </Link>
   );
 }

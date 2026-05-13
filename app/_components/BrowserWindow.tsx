@@ -1,9 +1,11 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 type BrowserWindowProps = {
   title?: string;
   children: ReactNode;
   showSignOut?: boolean;
+  showFoldersLink?: boolean;
   fill?: boolean;
 };
 
@@ -11,6 +13,7 @@ export function BrowserWindow({
   title = "새로고침",
   children,
   showSignOut = false,
+  showFoldersLink = true,
   fill = false,
 }: BrowserWindowProps) {
   return (
@@ -21,22 +24,38 @@ export function BrowserWindow({
           <span className="block h-3 w-3 rounded-full border-2 border-[#CCE7D7] bg-[#FCF7B0]" />
           <span className="block h-3 w-3 rounded-full border-2 border-[#CCE7D7] bg-[#CCE2A5]" />
         </div>
-        <span className="absolute left-1/2 -translate-x-1/2 text-[15px] font-bold text-[#503836]">
+        <span className="absolute left-1/2 -translate-x-1/2 text-[0.9375rem] font-bold text-[#503836]">
           {title}
         </span>
         {showSignOut && (
-          <form action="/auth/signout" method="post" className="ml-auto">
-            <button
-              type="submit"
+          <div className="ml-auto flex items-center gap-4">
+            <Link
+              href="/profile"
               className="text-sm font-bold text-[#503836] transition-opacity hover:opacity-70"
             >
-              로그아웃
-            </button>
-          </form>
+              내 사진
+            </Link>
+            {showFoldersLink && (
+              <Link
+                href="/folders"
+                className="text-sm font-bold text-[#503836] transition-opacity hover:opacity-70"
+              >
+                폴더로
+              </Link>
+            )}
+            <form action="/auth/signout" method="post">
+              <button
+                type="submit"
+                className="text-sm font-bold text-[#503836] transition-opacity hover:opacity-70"
+              >
+                로그아웃
+              </button>
+            </form>
+          </div>
         )}
       </div>
 
-      <div className="flex h-10 items-center gap-6 border-b-2 border-[#CCE7D7] px-5 text-[15px] text-[#503836]">
+      <div className="flex h-10 items-center gap-6 border-b-2 border-[#CCE7D7] px-5 text-[0.9375rem] text-[#503836]">
         <span>File</span>
         <span>Edit</span>
         <span>Object</span>

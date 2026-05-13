@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { uploadProfilePhoto } from "@/lib/profile-photo";
 import { ensureSystemFolders } from "../folders/seed";
 import type { AuthFormState } from "../login/actions";
 
@@ -12,6 +13,8 @@ export async function signupAction(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const passwordConfirm = String(formData.get("password_confirm") ?? "");
+  const photo = formData.get("photo");
+  const photoFile = photo instanceof File && photo.size > 0 ? photo : null;
 
   if (!email || !password || !passwordConfirm) {
     return { error: "이메일과 비밀번호를 입력해 주세요." };
@@ -44,11 +47,26 @@ export async function signupAction(
 
   if (data.session && data.user) {
     await ensureSystemFolders(supabase, data.user.id);
+    if (photoFile) {
+      const result = await uploadProfilePhoto(
+        supabase,
+        data.user.id,
+        photoFile,
+      );
+      if (result.error) {
+        return {
+          error: null,
+          info: `가입은 완료됐지만 사진 저장에 실패했어요 (${result.error}). 프로필 페이지에서 다시 올려 주세요.`,
+        };
+      }
+    }
     redirect("/folders");
   }
 
   return {
     error: null,
-    info: "이메일로 인증 링크를 보냈어요. 메일함에서 링크를 눌러 가입을 완료해 주세요.",
+    info: photoFile
+      ? "이메일로 인증 링크를 보냈어요. 메일함에서 링크를 누른 뒤, 프로필 페이지에서 사진을 다시 올려 주세요."
+      : "이메일로 인증 링크를 보냈어요. 메일함에서 링크를 눌러 가입을 완료해 주세요.",
   };
 }
