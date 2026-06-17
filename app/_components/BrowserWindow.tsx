@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+
+const FULL_STORAGE_KEY = "window-full";
 
 type FolderTab = "chat" | "write" | "post";
 
@@ -26,16 +30,42 @@ export function BrowserWindow({
   folderId,
   current,
 }: BrowserWindowProps) {
-  const fillContent = fill || fullPage;
+  const [isFull, setIsFull] = useState(fullPage);
+
+  // 페이지(탭)를 이동해도 전체화면 상태를 유지하기 위해 localStorage에 보존한다.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FULL_STORAGE_KEY);
+      if (raw == null) return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsFull(raw === "1");
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  function toggleFull() {
+    setIsFull((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(FULL_STORAGE_KEY, next ? "1" : "0");
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }
+
+  const fillContent = fill || isFull;
   return (
     <div
       className={
-        fullPage
+        isFull
           ? "fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#BADECB]"
           : "w-full max-w-[80vw] overflow-hidden rounded-2xl border-2 border-[#CCE7D7] bg-[#BADECB] shadow-[6px_6px_0_#503836]"
       }
     >
-      {!hideTitleBar && (
+      {!hideTitleBar && !isFull && (
       <div className="relative flex h-11 shrink-0 items-center border-b-2 border-[#CCE7D7] px-5">
         <div className="flex gap-2">
           <span className="block h-3 w-3 rounded-full border-2 border-[#CCE7D7] bg-[#F3A9C9]" />
@@ -101,10 +131,16 @@ export function BrowserWindow({
             <span>View</span>
           </>
         )}
-        <span className="ml-auto inline-flex h-5 w-5 items-center justify-center">
+        <button
+          type="button"
+          onClick={toggleFull}
+          aria-label={isFull ? "부분화면으로" : "전체화면으로"}
+          title={isFull ? "부분화면으로" : "전체화면으로"}
+          className="ml-auto inline-flex h-5 w-5 items-center justify-center transition-opacity hover:opacity-60"
+        >
           <svg
             viewBox="0 0 20 20"
-            className="h-4 w-4"
+            className={`h-4 w-4 transition-transform ${isFull ? "rotate-180" : ""}`}
             fill="none"
             stroke="#503836"
             strokeWidth="2"
@@ -113,13 +149,13 @@ export function BrowserWindow({
           >
             <polyline points="5 8 10 13 15 8" />
           </svg>
-        </span>
+        </button>
       </div>
 
       {fillContent ? (
         <div
           className={
-            fullPage
+            isFull
               ? "min-h-0 flex-1 bg-[#F3F7FA]"
               : "h-[65vh] bg-[#F3F7FA]"
           }

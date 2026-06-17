@@ -44,7 +44,6 @@ export default async function WritePage({ params }: PageProps) {
       title={folder.name}
       showSignOut
       fullPage
-      hideTitleBar
       folderId={folder.id}
       current="write"
     >
