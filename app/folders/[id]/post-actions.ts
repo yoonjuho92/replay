@@ -7,9 +7,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { PROFILE_BUCKET, findProfilePhoto } from "@/lib/profile-photo";
 import {
-  formatAnswersForPrompt,
+  formatStoryForPrompt,
   getCategoryByName,
-  normalizeAnswers,
+  getStory,
 } from "../categories";
 
 const BUCKET = "illustrations";
@@ -207,17 +207,14 @@ export async function planFinalize(folderId: string): Promise<PlanResult> {
     return { scenes: existingScenes, reused: true, error: null };
   }
 
-  const answers = normalizeAnswers(
-    category,
-    (folder.memory_inputs ?? {}) as Record<string, unknown>,
-  );
+  const story = getStory(folder.memory_inputs);
 
   let scenes: Scene[];
   try {
     scenes = await planScenesWithLLM({
       categoryName: category.name,
       folderName: folder.name,
-      answersBlock: formatAnswersForPrompt(category, answers),
+      answersBlock: formatStoryForPrompt(story),
       draft,
     });
   } catch (e) {

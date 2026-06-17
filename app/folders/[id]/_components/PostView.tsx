@@ -1,7 +1,8 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { generateSceneImage, type Scene } from "../post-actions";
+import { generateSceneImage, planFinalize, type Scene } from "../post-actions";
 
 type Props = {
   folderId: string;
@@ -31,8 +32,25 @@ export function PostView({
     })),
   );
   const [activeIdx, setActiveIdx] = useState(0);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
   const startedRef = useRef(false);
   const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+
+  function handleGenerate() {
+    if (generating) return;
+    setGenError(null);
+    setGenerating(true);
+    planFinalize(folderId).then((res) => {
+      if (res.error) {
+        setGenError(res.error);
+        setGenerating(false);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -79,11 +97,21 @@ export function PostView({
 
   if (scenes.length === 0) {
     return (
-      <div className="flex w-full max-w-[460px] flex-col items-center gap-4 rounded-md border-2 border-[#503836] bg-white p-6 text-center text-[#503836] shadow-[4px_4px_0_#503836]">
-        <p className="text-sm">아직 그릴 장면이 정해지지 않았어요.</p>
-        <p className="text-xs text-[#503836]/60">
-          글쓰기 화면에서 한 번 더 &lsquo;완료하기&rsquo;를 눌러 주세요.
+      <div className="flex w-full max-w-[460px] flex-col items-center gap-5 rounded-md border-2 border-[#503836] bg-white p-6 text-[#503836] shadow-[4px_4px_0_#503836]">
+        <p className="w-full whitespace-pre-wrap text-[0.9375rem] leading-relaxed">
+          {draft || "(아직 작성된 글이 없어요. 이야기 만들기에서 글을 먼저 적어 주세요.)"}
         </p>
+        {genError && (
+          <p className="text-sm text-[#B0413E]">{genError}</p>
+        )}
+        <button
+          type="button"
+          onClick={handleGenerate}
+          disabled={generating || !draft.trim()}
+          className="rounded-md bg-[#503836] px-8 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-60"
+        >
+          {generating ? "그림 그리는 중..." : "내 이야기에 맞는 그림 그리기"}
+        </button>
       </div>
     );
   }

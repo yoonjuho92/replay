@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { BrowserWindow } from "@/app/_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
-import { getCategoryByName, normalizeAnswers } from "../categories";
-import { MemoryForm } from "./_components/MemoryForm";
+import { AgentChat } from "./_components/AgentChat";
+import { getCategoryByName } from "../categories";
+import { generateChatOpener } from "./agent-actions";
 
 type PageProps = {
   params: Promise<{ id: string }>;
@@ -40,20 +41,17 @@ export default async function MemoryPage({ params }: PageProps) {
     );
   }
 
-  const answers = normalizeAnswers(
-    category,
-    (folder.memory_inputs ?? {}) as Record<string, unknown>,
-  );
+  const initialGreeting = await generateChatOpener(folder.id);
 
   return (
-    <BrowserWindow title={folder.name} showSignOut>
-      <div className="flex w-full flex-col gap-6">
-        <MemoryForm
-          folderId={folder.id}
-          category={category}
-          initialAnswers={answers}
-        />
-      </div>
+    <BrowserWindow
+      title={folder.name}
+      showSignOut
+      fill
+      folderId={folder.id}
+      current="chat"
+    >
+      <AgentChat folderId={folder.id} initialGreeting={initialGreeting} />
     </BrowserWindow>
   );
 }

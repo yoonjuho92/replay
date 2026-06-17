@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 const STORAGE_KEY = "font-scale";
-const BASE_PX = 16;
+const BASE_PX = 19;
 const MIN = 0.8;
 const MAX = 1.6;
 const STEP = 0.1;

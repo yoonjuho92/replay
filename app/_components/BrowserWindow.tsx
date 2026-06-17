@@ -1,12 +1,18 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+type FolderTab = "chat" | "write" | "post";
+
 type BrowserWindowProps = {
   title?: string;
   children: ReactNode;
   showSignOut?: boolean;
   showFoldersLink?: boolean;
   fill?: boolean;
+  fullPage?: boolean;
+  hideTitleBar?: boolean;
+  folderId?: string;
+  current?: FolderTab;
 };
 
 export function BrowserWindow({
@@ -15,10 +21,22 @@ export function BrowserWindow({
   showSignOut = false,
   showFoldersLink = true,
   fill = false,
+  fullPage = false,
+  hideTitleBar = false,
+  folderId,
+  current,
 }: BrowserWindowProps) {
+  const fillContent = fill || fullPage;
   return (
-    <div className="w-full max-w-[80vw] overflow-hidden rounded-2xl border-2 border-[#CCE7D7] bg-[#BADECB] shadow-[6px_6px_0_#503836]">
-      <div className="relative flex h-11 items-center border-b-2 border-[#CCE7D7] px-5">
+    <div
+      className={
+        fullPage
+          ? "fixed inset-0 z-20 flex flex-col overflow-hidden bg-[#BADECB]"
+          : "w-full max-w-[80vw] overflow-hidden rounded-2xl border-2 border-[#CCE7D7] bg-[#BADECB] shadow-[6px_6px_0_#503836]"
+      }
+    >
+      {!hideTitleBar && (
+      <div className="relative flex h-11 shrink-0 items-center border-b-2 border-[#CCE7D7] px-5">
         <div className="flex gap-2">
           <span className="block h-3 w-3 rounded-full border-2 border-[#CCE7D7] bg-[#F3A9C9]" />
           <span className="block h-3 w-3 rounded-full border-2 border-[#CCE7D7] bg-[#FCF7B0]" />
@@ -54,12 +72,35 @@ export function BrowserWindow({
           </div>
         )}
       </div>
+      )}
 
-      <div className="flex h-10 items-center gap-6 border-b-2 border-[#CCE7D7] px-5 text-[0.9375rem] text-[#503836]">
-        <span>File</span>
-        <span>Edit</span>
-        <span>Object</span>
-        <span>View</span>
+      <div className="flex h-10 shrink-0 items-center gap-6 border-b-2 border-[#CCE7D7] px-5 text-[0.9375rem] text-[#503836]">
+        {folderId ? (
+          <>
+            <FolderNavTab
+              href={`/folders/${folderId}`}
+              label="대화하기"
+              active={current === "chat"}
+            />
+            <FolderNavTab
+              href={`/folders/${folderId}/write`}
+              label="이야기 만들기"
+              active={current === "write"}
+            />
+            <FolderNavTab
+              href={`/folders/${folderId}/post`}
+              label="결과 보기"
+              active={current === "post"}
+            />
+          </>
+        ) : (
+          <>
+            <span>File</span>
+            <span>Edit</span>
+            <span>Object</span>
+            <span>View</span>
+          </>
+        )}
         <span className="ml-auto inline-flex h-5 w-5 items-center justify-center">
           <svg
             viewBox="0 0 20 20"
@@ -75,8 +116,14 @@ export function BrowserWindow({
         </span>
       </div>
 
-      {fill ? (
-        <div className="h-[65vh] bg-[#F3F7FA]">
+      {fillContent ? (
+        <div
+          className={
+            fullPage
+              ? "min-h-0 flex-1 bg-[#F3F7FA]"
+              : "h-[65vh] bg-[#F3F7FA]"
+          }
+        >
           <div className="flex h-full flex-col px-8 py-8">{children}</div>
         </div>
       ) : (
@@ -87,7 +134,30 @@ export function BrowserWindow({
         </div>
       )}
 
-      <div className="h-8 border-t-2 border-[#CCE7D7]" />
+      <div className="h-8 shrink-0 border-t-2 border-[#CCE7D7]" />
     </div>
+  );
+}
+
+function FolderNavTab({
+  href,
+  label,
+  active,
+}: {
+  href: string;
+  label: string;
+  active: boolean;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        active
+          ? "font-bold text-[#00A796]"
+          : "text-[#503836] transition-opacity hover:opacity-70"
+      }
+    >
+      {label}
+    </Link>
   );
 }

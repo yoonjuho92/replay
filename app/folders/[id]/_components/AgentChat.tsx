@@ -1,11 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { MicButton } from "@/app/_components/MicButton";
-import { chatWithAgent, type AgentMessage } from "../agent-actions";
+import type { AgentMessage } from "../agent-core";
 
 type Props = {
   folderId: string;
@@ -19,23 +17,11 @@ export function AgentChat({ folderId, initialGreeting }: Props) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [completing, setCompleting] = useState(false);
-  const router = useRouter();
-  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [completed, setCompleted] = useState(false);
 
-  useEffect(() => {
-    if (!completing) return;
-    const timer = setTimeout(() => {
-      router.push(`/folders/${folderId}/write`);
-    }, 2200);
-    return () => clearTimeout(timer);
-  }, [completing, folderId, router]);
-
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, pending]);
+  const latestAssistant =
+    [...messages].reverse().find((m) => m.role === "assistant")?.content ??
+    initialGreeting;
 
   const handleSend = (e?: React.FormEvent<HTMLFormElement>) => {
     e?.preventDefault();
@@ -43,77 +29,97 @@ export function AgentChat({ folderId, initialGreeting }: Props) {
     if (!text || pending) return;
     setError(null);
     setInput("");
-    const optimistic: AgentMessage[] = [
-      ...messages,
-      { role: "user", content: text },
-    ];
-    setMessages(optimistic);
+    const history = messages;
+    setMessages([...history, { role: "user", content: text }]);
     startTransition(async () => {
-      const res = await chatWithAgent(folderId, messages, text);
-      if (res.error) {
-        setError(res.error);
-        return;
-      }
-      setMessages(res.messages);
-      if (res.complete) {
-        setCompleting(true);
+      try {
+        const res = await fetch(`/folders/${folderId}/chat`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ messages: history, userMessage: text }),
+        });
+        if (!res.ok || !res.body) {
+          setError("응답을 가져오지 못했어요.");
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let acc = "";
+        let started = false;
+
+        const pump = async (): Promise<void> => {
+          const { value, done } = await reader.read();
+          if (done) return;
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() ?? "";
+          for (const part of parts) {
+            const line = part.trim();
+            if (!line.startsWith("data:")) continue;
+            const json = line.slice(5).trim();
+            if (!json) continue;
+            const evt = JSON.parse(json) as {
+              type: "delta" | "done" | "error";
+              text?: string;
+              complete?: boolean;
+              error?: string;
+            };
+            if (evt.type === "delta") {
+              acc += evt.text ?? "";
+              setMessages((prev) => {
+                if (!started) {
+                  started = true;
+                  return [...prev, { role: "assistant", content: acc }];
+                }
+                const next = [...prev];
+                next[next.length - 1] = { role: "assistant", content: acc };
+                return next;
+              });
+            } else if (evt.type === "done") {
+              if (evt.complete) setCompleted(true);
+            } else if (evt.type === "error") {
+              setError(evt.error ?? "응답을 가져오지 못했어요.");
+            }
+          }
+          await pump();
+        };
+        await pump();
+      } catch {
+        setError("응답을 가져오지 못했어요.");
       }
     });
   };
 
-  if (completing) {
-    return (
-      <div className="relative flex h-full w-full flex-col gap-6 text-[#503836]">
-        <div className="relative flex flex-1 flex-col items-center justify-center gap-3 overflow-hidden text-center text-lg leading-loose">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-0 z-0 animate-[flashWhite_900ms_ease-out_both] bg-white"
-          />
-          <Image
-            aria-hidden
-            src="/rewind.png"
-            alt=""
-            width={160}
-            height={160}
-            className="pointer-events-none absolute left-1/2 top-1/2 z-0 h-40 w-40 -translate-x-1/2 -translate-y-1/2 animate-[spinRewind_1600ms_ease-in-out_both]"
-          />
-          <p className="relative z-10 animate-[fadeUpBlur_900ms_ease-out_300ms_both]">
-            이제 당신의 이야기를 글로 옮겨 볼게요.
-          </p>
-          <p className="relative z-10 animate-[fadeUpBlur_900ms_ease-out_1100ms_both]">
-            글쓰기 화면으로 이동합니다.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex h-full w-full min-h-0 flex-col gap-4 text-[#503836]">
-      <div className="flex shrink-0 items-center justify-between gap-2">
-        <p className="text-sm font-bold text-[#5DBFA8]">에이전트와 대화하기</p>
-        <Link
-          href={`/folders/${folderId}`}
-          className="text-sm font-bold text-[#00A796] transition-opacity hover:opacity-80"
-        >
-          직접 입력하기 →
-        </Link>
-      </div>
-      <div
-        ref={scrollRef}
-        className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded border-2 border-[#CCE7D7] bg-white p-4"
-      >
-        {messages.map((m, i) => (
-          <ChatBubble key={i} role={m.role} content={m.content} />
-        ))}
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-4 overflow-y-auto px-2 py-6">
+        <div className="w-full whitespace-pre-wrap rounded-2xl border-2 border-[#CCE7D7] bg-white px-5 py-4 text-left text-lg leading-relaxed text-[#503836] md:text-xl md:leading-relaxed">
+          {latestAssistant}
+        </div>
         {pending && (
-          <div className="flex gap-1 self-start rounded-2xl border-2 border-[#CCE7D7] bg-[#F3F7FA] px-4 py-2">
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A8B5AD] [animation-delay:0ms]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A8B5AD] [animation-delay:150ms]" />
-            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[#A8B5AD] [animation-delay:300ms]" />
+          <div className="flex gap-1.5 self-start rounded-2xl border-2 border-[#CCE7D7] bg-[#F3F7FA] px-4 py-3">
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#A8B5AD] [animation-delay:0ms]" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#A8B5AD] [animation-delay:150ms]" />
+            <span className="h-2 w-2 animate-bounce rounded-full bg-[#A8B5AD] [animation-delay:300ms]" />
           </div>
         )}
       </div>
+      {completed && (
+        <div className="flex shrink-0 flex-col items-center gap-2 rounded border-2 border-[#CCE7D7] bg-[#F3F7FA] px-4 py-3 text-center">
+          <p className="text-sm text-[#503836]">
+            이야기가 충분히 모였어요. 준비되면 글로 옮겨 볼까요? 더 들려주고
+            싶은 이야기가 있다면 계속 이어가도 좋아요.
+          </p>
+          <Link
+            href={`/folders/${folderId}/write`}
+            className="rounded-md bg-[#503836] px-6 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28]"
+          >
+            이야기 만들기로 가기 →
+          </Link>
+        </div>
+      )}
       {error && <p className="shrink-0 text-sm text-[#B0413E]">{error}</p>}
       <form onSubmit={handleSend} className="flex shrink-0 items-stretch gap-2">
         <input
@@ -139,31 +145,6 @@ export function AgentChat({ folderId, initialGreeting }: Props) {
           보내기
         </button>
       </form>
-    </div>
-  );
-}
-
-function ChatBubble({
-  role,
-  content,
-}: {
-  role: "user" | "assistant";
-  content: string;
-}) {
-  const isUser = role === "user";
-  return (
-    <div
-      className={`flex max-w-[85%] flex-col gap-1 ${isUser ? "self-end items-end" : "self-start items-start"}`}
-    >
-      <div
-        className={`whitespace-pre-wrap rounded-2xl border-2 px-4 py-2 text-[0.9375rem] leading-relaxed ${
-          isUser
-            ? "border-[#503836] bg-[#503836] text-white"
-            : "border-[#CCE7D7] bg-[#F3F7FA] text-[#503836]"
-        }`}
-      >
-        {content}
-      </div>
     </div>
   );
 }
