@@ -14,7 +14,9 @@ alter table public.folders drop column if exists image_path;
 alter table public.folders
   add column if not exists image_draft text,
   add column if not exists image_target_count int,
-  add column if not exists image_scenes jsonb;
+  add column if not exists image_scenes jsonb,
+  -- 그림체: 'comic'(만화풍) | 'realistic'(실사풍) | 'line'(선묘화)
+  add column if not exists image_style text;
 
 -- 2. Create a public storage bucket for illustrations (idempotent).
 insert into storage.buckets (id, name, public)

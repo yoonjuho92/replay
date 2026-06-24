@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { BrowserWindow } from "@/app/_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +30,30 @@ export default async function WritePage({ params }: PageProps) {
   if (!category.available) redirect(`/folders/${folder.id}`);
 
   if (!hasStory(folder.memory_inputs)) {
-    redirect(`/folders/${folder.id}`);
+    return (
+      <BrowserWindow
+        title={folder.name}
+        showSignOut
+        fullPage
+        hideTitleBar
+        folderId={folder.id}
+        current="write"
+      >
+        <div className="flex h-full w-full flex-col items-center justify-center gap-5 text-center text-[#503836]">
+          <p className="text-lg leading-relaxed">
+            아직 나눈 이야기가 없어요.
+            <br />
+            먼저 대화하기에서 이야기를 들려주세요.
+          </p>
+          <Link
+            href={`/folders/${folder.id}`}
+            className="rounded-md bg-[#503836] px-8 py-2 font-bold text-white transition-colors hover:bg-[#3d2a28]"
+          >
+            대화하기로 가기 →
+          </Link>
+        </div>
+      </BrowserWindow>
+    );
   }
 
   const initialDraft = (folder.memory_generated as string | null) ?? "";

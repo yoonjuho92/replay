@@ -3,7 +3,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { uploadProfilePhoto } from "@/lib/profile-photo";
-import { ensureSystemFolders } from "../folders/seed";
 import type { AuthFormState } from "../login/actions";
 
 export async function signupAction(
@@ -46,7 +45,6 @@ export async function signupAction(
   }
 
   if (data.session && data.user) {
-    await ensureSystemFolders(supabase, data.user.id);
     if (photoFile) {
       const result = await uploadProfilePhoto(
         supabase,

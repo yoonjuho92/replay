@@ -1,13 +1,8 @@
 import { redirect } from "next/navigation";
 import { BrowserWindow } from "../_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
-import {
-  CATEGORIES,
-  SYSTEM_FOLDER_NAMES,
-  getCategoryByName,
-} from "./categories";
+import { CATEGORIES, getCategoryByName } from "./categories";
 import { FoldersGrid, type FolderRow } from "./_components/FoldersGrid";
-import { ensureSystemFolders } from "./seed";
 
 export default async function FoldersPage() {
   const supabase = await createClient();
@@ -16,13 +11,16 @@ export default async function FoldersPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await ensureSystemFolders(supabase, user.id);
-
   const { data } = await supabase
     .from("folders")
     .select("id,name,memory_generated")
-    .in("name", SYSTEM_FOLDER_NAMES)
     .eq("user_id", user.id);
+
+  // 아는 주제(6가지)에 해당하는 폴더만 추린다.
+  const myRows = (data ?? []).filter((r) => getCategoryByName(r.name as string));
+
+  // 아직 주제 쌍을 고르지 않았으면(폴더가 없으면) 선택 화면으로 보낸다.
+  if (myRows.length === 0) redirect("/folders/select");
 
   // Optional columns added by supabase-setup.sql. If the SQL has not been
   // run yet, this select errors and we treat every folder as not-finalized.
@@ -30,7 +28,7 @@ export default async function FoldersPage() {
     string,
     { imageDraft: string; sceneCount: number }
   >();
-  const folderIds = (data ?? []).map((r) => r.id as string);
+  const folderIds = myRows.map((r) => r.id as string);
   if (folderIds.length > 0) {
     const { data: extras } = await supabase
       .from("folders")
@@ -48,8 +46,8 @@ export default async function FoldersPage() {
   }
 
   const byName = new Map<string, FolderRow>();
-  for (const row of data ?? []) {
-    const category = getCategoryByName(row.name);
+  for (const row of myRows) {
+    const category = getCategoryByName(row.name as string);
     if (!category) continue;
     const draftTrim = (
       (row.memory_generated as string | null) ?? ""
@@ -61,23 +59,26 @@ export default async function FoldersPage() {
       extras.sceneCount > 0 &&
       extras.imageDraft.length > 0 &&
       extras.imageDraft === draftTrim;
-    byName.set(row.name, {
-      id: row.id,
-      name: row.name,
+    byName.set(row.name as string, {
+      id: row.id as string,
+      name: row.name as string,
       available: category.available,
       isFinalized,
     });
   }
+  // CATEGORIES 순서대로 정렬하되, 내가 가진 폴더만 보여준다.
   const folders: FolderRow[] = CATEGORIES.map((c) => byName.get(c.name)).filter(
     (f): f is FolderRow => Boolean(f),
   );
+
+  const folderNames = folders.map((f) => f.name).join(", ");
 
   return (
     <BrowserWindow title="새로고침" showSignOut>
       <div className="flex w-full flex-col items-center gap-12">
         <div className="text-center text-[0.9375rem] leading-relaxed text-[#503836]">
-          <p>당신의 기억을 세 개의 폴더에 모아요</p>
-          <p>내 인생의 한 끼, 감사한 사람, 돌아가고 싶은 시간</p>
+          <p>당신이 고른 두 가지 주제예요</p>
+          <p>{folderNames}</p>
           <p>오늘은 어떤 폴더부터 열어 볼까요?</p>
         </div>
         <FoldersGrid folders={folders} />

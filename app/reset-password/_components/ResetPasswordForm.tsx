@@ -1,0 +1,61 @@
+"use client";
+
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+import type { AuthFormState } from "../../login/actions";
+import { updatePassword } from "../actions";
+
+export function ResetPasswordForm() {
+  const [state, formAction] = useActionState<AuthFormState, FormData>(
+    updatePassword,
+    { error: null },
+  );
+
+  return (
+    <form
+      action={formAction}
+      className="flex w-full max-w-sm flex-col gap-4 text-[#503836]"
+    >
+      <label className="flex flex-col gap-1 text-sm font-bold">
+        새 비밀번호
+        <input
+          type="password"
+          name="password"
+          required
+          minLength={6}
+          autoComplete="new-password"
+          className="rounded border border-[#CCE7D7] bg-white px-3 py-2 text-base font-normal"
+        />
+      </label>
+
+      <label className="flex flex-col gap-1 text-sm font-bold">
+        새 비밀번호 확인
+        <input
+          type="password"
+          name="password_confirm"
+          required
+          minLength={6}
+          autoComplete="new-password"
+          className="rounded border border-[#CCE7D7] bg-white px-3 py-2 text-base font-normal"
+        />
+      </label>
+
+      {state.error && <p className="text-sm text-[#B0413E]">{state.error}</p>}
+
+      <SubmitButton />
+    </form>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="mt-2 rounded-md bg-[#503836] px-10 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-60"
+    >
+      {pending ? "바꾸는 중..." : "비밀번호 바꾸기"}
+    </button>
+  );
+}

@@ -1,7 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import {
+  IMAGE_STYLES,
+  type ImageStyle,
+} from "../../categories";
 import { generateSceneImage, planFinalize, type Scene } from "../post-actions";
 
 type Props = {
@@ -10,6 +15,7 @@ type Props = {
   draft: string;
   scenes: Scene[];
   initialUrls: (string | null)[];
+  initialStyle: ImageStyle;
 };
 
 type SlotState = {
@@ -24,6 +30,7 @@ export function PostView({
   draft,
   scenes,
   initialUrls,
+  initialStyle,
 }: Props) {
   const [slots, setSlots] = useState<SlotState[]>(() =>
     scenes.map((_, i) => ({
@@ -34,15 +41,17 @@ export function PostView({
   const [activeIdx, setActiveIdx] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [genError, setGenError] = useState<string | null>(null);
-  const startedRef = useRef(false);
+  const [pickedStyle, setPickedStyle] = useState<ImageStyle>(initialStyle);
+  const [downloading, setDownloading] = useState(false);
+  const requestKeyRef = useRef("");
   const scrollerRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
 
-  function handleGenerate() {
+  function handleGenerate(style: ImageStyle) {
     if (generating) return;
     setGenError(null);
     setGenerating(true);
-    planFinalize(folderId).then((res) => {
+    planFinalize(folderId, style).then((res) => {
       if (res.error) {
         setGenError(res.error);
         setGenerating(false);
@@ -52,9 +61,15 @@ export function PostView({
     });
   }
 
+  // 서버에서 새 계획(장면/스타일/그림 유무)이 내려올 때마다, 아직 안 그려진 칸을 그린다.
   useEffect(() => {
-    if (startedRef.current) return;
-    startedRef.current = true;
+    const key = `${initialStyle}|${scenes.map((s) => s.caption).join("~")}|${initialUrls
+      .map((u) => (u ? 1 : 0))
+      .join("")}`;
+    if (requestKeyRef.current === key) return;
+    requestKeyRef.current = key;
+    setGenerating(false);
+    setSlots(scenes.map((_, i) => ({ url: initialUrls[i] ?? null, error: null })));
     scenes.forEach((_, i) => {
       if (initialUrls[i]) return;
       generateSceneImage(folderId, i).then((res) => {
@@ -65,7 +80,7 @@ export function PostView({
         });
       });
     });
-  }, [folderId, scenes, initialUrls]);
+  }, [folderId, scenes, initialUrls, initialStyle]);
 
   function regenerate(i: number) {
     setSlots((prev) => {
@@ -82,6 +97,33 @@ export function PostView({
     });
   }
 
+  async function downloadAll() {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      for (let i = 0; i < slots.length; i++) {
+        const url = slots[i]?.url;
+        if (!url) continue;
+        try {
+          const res = await fetch(url);
+          const blob = await res.blob();
+          const objectUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = objectUrl;
+          a.download = `${folderName}-${i + 1}.png`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(objectUrl);
+        } catch {
+          // 한 장이 실패해도 나머지는 계속 시도한다.
+        }
+      }
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -95,26 +137,49 @@ export function PostView({
     return () => el.removeEventListener("scroll", handler);
   }, [scenes.length]);
 
+  // 아직 그림 계획이 없을 때 — 스타일을 고르고 그림 그리기를 시작하는 화면.
   if (scenes.length === 0) {
+    const hasDraft = draft.trim().length > 0;
     return (
       <div className="flex w-full max-w-[460px] flex-col items-center gap-5 rounded-md border-2 border-[#503836] bg-white p-6 text-[#503836] shadow-[4px_4px_0_#503836]">
         <p className="w-full whitespace-pre-wrap text-[0.9375rem] leading-relaxed">
-          {draft || "(아직 작성된 글이 없어요. 이야기 만들기에서 글을 먼저 적어 주세요.)"}
+          {draft || "아직 작성된 글이 없어요. 이야기 만들기에서 글을 먼저 적어 주세요."}
         </p>
-        {genError && (
-          <p className="text-sm text-[#B0413E]">{genError}</p>
+        {hasDraft ? (
+          <>
+            <div className="flex w-full flex-col items-center gap-2">
+              <p className="text-sm font-bold">어떤 그림체로 그릴까요?</p>
+              <StylePicker
+                value={pickedStyle}
+                onChange={setPickedStyle}
+                disabled={generating}
+              />
+            </div>
+            {genError && <p className="text-sm text-[#B0413E]">{genError}</p>}
+            <button
+              type="button"
+              onClick={() => handleGenerate(pickedStyle)}
+              disabled={generating}
+              className="rounded-md bg-[#503836] px-8 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-60"
+            >
+              {generating
+                ? "그림 그리는 중..."
+                : "이 그림체로 3장 그리기"}
+            </button>
+          </>
+        ) : (
+          <Link
+            href={`/folders/${folderId}/write`}
+            className="rounded-md bg-[#503836] px-8 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28]"
+          >
+            이야기 만들기로 가기 →
+          </Link>
         )}
-        <button
-          type="button"
-          onClick={handleGenerate}
-          disabled={generating || !draft.trim()}
-          className="rounded-md bg-[#503836] px-8 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-60"
-        >
-          {generating ? "그림 그리는 중..." : "내 이야기에 맞는 그림 그리기"}
-        </button>
       </div>
     );
   }
+
+  const allReady = slots.length > 0 && slots.every((s) => s?.url);
 
   return (
     <div className="w-full max-w-[460px] overflow-hidden rounded-md border-2 border-[#503836] bg-white shadow-[4px_4px_0_#503836]">
@@ -182,14 +247,76 @@ export function PostView({
         </div>
       )}
 
-      <div className="flex flex-col gap-2 border-t-2 border-[#503836] bg-white p-4">
+      <div className="flex flex-col gap-3 border-t-2 border-[#503836] bg-white p-4">
         <p className="text-xs font-bold text-[#5DBFA8]">
           {scenes[activeIdx]?.caption}
         </p>
         <p className="whitespace-pre-wrap text-[0.875rem] leading-relaxed text-[#503836]">
           {draft || "(글이 비어 있어요)"}
         </p>
+
+        <button
+          type="button"
+          onClick={downloadAll}
+          disabled={!allReady || downloading}
+          className="mt-1 rounded-md bg-[#503836] px-6 py-2 text-sm font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-50"
+        >
+          {downloading
+            ? "내려받는 중..."
+            : allReady
+              ? "그림 3장 모두 저장"
+              : "그림이 다 그려지면 저장할 수 있어요"}
+        </button>
+
+        <div className="mt-2 flex flex-col items-center gap-2 border-t border-[#503836]/15 pt-3">
+          <p className="text-xs font-bold text-[#503836]/70">
+            다른 그림체로 다시 그리기
+          </p>
+          <StylePicker
+            value={initialStyle}
+            onChange={(s) => handleGenerate(s)}
+            disabled={generating}
+          />
+          {generating && (
+            <p className="text-xs text-[#503836]/60">새 그림체로 다시 그리는 중...</p>
+          )}
+          {genError && <p className="text-xs text-[#B0413E]">{genError}</p>}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function StylePicker({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: ImageStyle;
+  onChange: (style: ImageStyle) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap justify-center gap-2">
+      {IMAGE_STYLES.map((style) => {
+        const active = style.id === value;
+        return (
+          <button
+            key={style.id}
+            type="button"
+            onClick={() => onChange(style.id)}
+            disabled={disabled}
+            title={style.hint}
+            className={`rounded-md border-2 border-[#503836] px-3 py-1.5 text-sm font-bold transition-colors disabled:opacity-50 ${
+              active
+                ? "bg-[#503836] text-white"
+                : "bg-white text-[#503836] hover:bg-[#FCF7B0]"
+            }`}
+          >
+            {style.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

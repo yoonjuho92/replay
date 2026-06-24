@@ -50,6 +50,7 @@ export default async function PostPage({ params }: PageProps) {
         draft={state.draft}
         scenes={state.scenes}
         initialUrls={state.urls}
+        initialStyle={state.style}
       />
       <div className="flex flex-wrap gap-3">
         <Link

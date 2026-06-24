@@ -7,16 +7,40 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { PROFILE_BUCKET, findProfilePhoto } from "@/lib/profile-photo";
 import {
+  type ImageStyle,
   formatStoryForPrompt,
   getCategoryByName,
+  getImageStyle,
   getStory,
 } from "../categories";
 
 const BUCKET = "illustrations";
-const MIN_SCENES = 1;
-const MAX_SCENES = 5;
+// 그림은 주제마다 반드시 3장씩 만든다.
+const SCENE_COUNT = 3;
 
 export type Scene = { caption: string; prompt: string };
+
+/** 스타일별로 그림 프롬프트 맨 앞에 붙는 화풍 지시문 */
+function styleDirective(style: ImageStyle): string[] {
+  if (style === "comic") {
+    return [
+      "A single warm, gentle hand-drawn cartoon illustration with clean confident outlines, soft flat color fills, and simple expressive faces, like a heartwarming storybook or webtoon panel. Full color.",
+      "No text, no captions, no speech bubbles, no signatures. Square 1:1.",
+    ];
+  }
+  if (style === "realistic") {
+    return [
+      "A single photorealistic illustration with natural soft lighting, realistic textures, gentle depth of field, and lifelike detail, like a candid film photograph of the remembered moment. Full color.",
+      "No text, no captions, no watermarks, no signatures. Square 1:1.",
+    ];
+  }
+  // line — 기존 펜화 선묘 스타일
+  return [
+    "A single hand-drawn line drawing in a delicate pen-and-ink style with visible pressure variation in the line work, like a fine writer's notebook sketch.",
+    "Monochrome ink (warm dark brown ink on warm off-white paper). No text, no captions, no signatures.",
+    "Composition: minimalist, intimate, slightly cinematic, with breathing white space and soft cross-hatching for tone. Square 1:1.",
+  ];
+}
 
 function getOpenAI() {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -32,16 +56,13 @@ function buildImagePrompt(
   scene: Scene,
   draftExcerpt: string,
   hasReferencePhoto: boolean,
+  style: ImageStyle,
 ): string {
-  const lines = [
-    "A single hand-drawn illustration in a delicate pen-and-ink style with visible pressure variation in the line work, like a fine writer's notebook sketch.",
-    "Monochrome ink (warm dark brown ink on warm off-white paper). No text, no captions, no signatures.",
-    "Composition: minimalist, intimate, slightly cinematic, with breathing white space and soft cross-hatching for tone. Square 1:1.",
-  ];
+  const lines = styleDirective(style);
   if (hasReferencePhoto) {
     lines.push(
       "",
-      "Face reference: the attached photo is the user's selfie. The figure depicted in this illustration is the same person. Preserve their facial identity (face shape, eye shape, nose, mouth, hairline), translated faithfully into hand-drawn pen-and-ink lines — not a photographic likeness.",
+      "Face reference: the attached photo is the user's selfie. The figure depicted in this illustration is the same person. Preserve their facial identity (face shape, eye shape, nose, mouth, hairline), translated faithfully into the style described above.",
       "Age: render the person at the age implied by the scene and the memory excerpt below, which may be much younger (child, teenager, young adult) or older than the reference photo. Adjust hair length/style, skin smoothness, posture, and clothing accordingly to fit the era, while keeping the underlying bone structure and identifying features recognizable.",
     );
   }
@@ -57,17 +78,17 @@ function buildImagePrompt(
 }
 
 const SCENE_PLAN_SYSTEM_PROMPT = [
-  "당신은 사용자의 짧은 회고문을 읽고 그 글의 핵심 장면을 1~5개로 추려내는 일러스트 디렉터입니다.",
+  "당신은 사용자의 짧은 회고문을 읽고 그 글의 핵심 장면을 정확히 3개 추려내는 일러스트 디렉터입니다.",
   "",
   "[규칙]",
-  "- 글의 길이와 장면 전환 수를 보고 자연스럽게 몇 개가 필요한지 정하세요. 짧고 한 장면이면 1~2개, 시간/공간/감정 전환이 뚜렷하면 3~5개까지.",
-  "- 같은 장면을 약간 다른 각도로 두 번 그리지 마세요. 매번 다른 순간이어야 합니다.",
+  "- 반드시 장면을 3개 만드세요. 글이 짧더라도 한 이야기 안의 서로 다른 순간 3개로 나눠 보세요(예: 시작 장면, 가장 마음이 머무는 순간, 여운이 남는 장면).",
+  "- 같은 장면을 약간 다른 각도로 두 번 그리지 마세요. 셋 다 분명히 다른 순간이어야 합니다.",
   "- 각 장면은 글의 흐름 순서대로 배열하세요.",
   "- 각 장면에 두 가지 필드:",
   "  - caption: 한국어, 6~16자. 그 장면을 가리키는 짧은 라벨.",
-  "  - prompt: 영어, 40~80 단어. 그 장면을 hand-drawn pen-and-ink illustration으로 그리기 위한 시각적 묘사. 인물의 표정/자세, 장소, 시간대, 빛, 공기감을 구체적으로. 큰따옴표나 별표 사용 금지.",
+  "  - prompt: 영어, 40~80 단어. 그 장면을 그리기 위한 시각적 묘사. 인물의 표정/자세, 장소, 시간대, 빛, 공기감을 구체적으로. 화풍(스타일)은 적지 말고 장면 내용만 묘사하세요. 큰따옴표나 별표 사용 금지.",
   "- 글에 명시되지 않은 사실은 만들지 않습니다.",
-  '- 결과는 JSON으로만: {"scenes":[{"caption":"...","prompt":"..."},...]}',
+  '- 결과는 JSON으로만: {"scenes":[{"caption":"...","prompt":"..."},{...},{...}]}',
   "- 코드 블록, 추가 설명, 머리말 금지.",
 ].join("\n");
 
@@ -115,10 +136,10 @@ async function planScenesWithLLM(args: {
       prompt: typeof s.prompt === "string" ? s.prompt.trim() : "",
     }))
     .filter((s) => s.caption.length > 0 && s.prompt.length > 0)
-    .slice(0, MAX_SCENES);
+    .slice(0, SCENE_COUNT);
 
-  if (cleaned.length < MIN_SCENES) {
-    throw new Error("장면 분석 결과가 비어 있어요.");
+  if (cleaned.length < SCENE_COUNT) {
+    throw new Error("장면 3개를 만들지 못했어요. 글을 조금 더 적고 다시 시도해 주세요.");
   }
   return cleaned;
 }
@@ -161,7 +182,10 @@ export type PlanResult = {
   error: string | null;
 };
 
-export async function planFinalize(folderId: string): Promise<PlanResult> {
+export async function planFinalize(
+  folderId: string,
+  style: ImageStyle,
+): Promise<PlanResult> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -171,7 +195,7 @@ export async function planFinalize(folderId: string): Promise<PlanResult> {
   const { data: folder } = await supabase
     .from("folders")
     .select(
-      "id, name, memory_inputs, memory_generated, image_draft, image_scenes, image_target_count",
+      "id, name, memory_inputs, memory_generated, image_draft, image_scenes, image_target_count, image_style",
     )
     .eq("id", folderId)
     .maybeSingle();
@@ -199,32 +223,41 @@ export async function planFinalize(folderId: string): Promise<PlanResult> {
 
   const existingDraft = ((folder.image_draft as string | null) ?? "").trim();
   const existingScenes = (folder.image_scenes as Scene[] | null) ?? [];
-  if (
+  const existingStyle = getImageStyle(folder.image_style);
+  const styleChanged = existingStyle !== style;
+  const canReuseScenes =
     existingDraft.length > 0 &&
     existingDraft === draft &&
-    existingScenes.length > 0
-  ) {
+    existingScenes.length > 0;
+
+  // 글이 그대로이고 스타일도 그대로라면 다시 분석할 필요가 없다.
+  if (canReuseScenes && !styleChanged) {
     return { scenes: existingScenes, reused: true, error: null };
   }
 
-  const story = getStory(folder.memory_inputs);
-
   let scenes: Scene[];
-  try {
-    scenes = await planScenesWithLLM({
-      categoryName: category.name,
-      folderName: folder.name,
-      answersBlock: formatStoryForPrompt(story),
-      draft,
-    });
-  } catch (e) {
-    return {
-      scenes: [],
-      reused: false,
-      error: e instanceof Error ? e.message : "장면 분석에 실패했어요.",
-    };
+  if (canReuseScenes) {
+    // 글은 그대로지만 스타일만 바뀐 경우 — 장면은 재사용하고 그림만 다시 그린다.
+    scenes = existingScenes;
+  } else {
+    const story = getStory(folder.memory_inputs);
+    try {
+      scenes = await planScenesWithLLM({
+        categoryName: category.name,
+        folderName: folder.name,
+        answersBlock: formatStoryForPrompt(story),
+        draft,
+      });
+    } catch (e) {
+      return {
+        scenes: [],
+        reused: false,
+        error: e instanceof Error ? e.message : "장면 분석에 실패했어요.",
+      };
+    }
   }
 
+  // 새 장면이거나 스타일이 바뀌었으면 이전 그림을 지워 다시 그리게 한다.
   await removeFolderObjects(supabase, user.id, folder.id);
 
   const { error: updErr } = await supabase
@@ -233,6 +266,7 @@ export async function planFinalize(folderId: string): Promise<PlanResult> {
       image_draft: draft,
       image_target_count: scenes.length,
       image_scenes: scenes,
+      image_style: style,
       updated_at: new Date().toISOString(),
     })
     .eq("id", folder.id);
@@ -266,7 +300,7 @@ export async function generateSceneImage(
 
   const { data: folder } = await supabase
     .from("folders")
-    .select("id, name, memory_generated, image_scenes")
+    .select("id, name, memory_generated, image_scenes, image_style")
     .eq("id", folderId)
     .maybeSingle();
   if (!folder) return { url: null, error: "폴더를 찾지 못했어요." };
@@ -277,9 +311,10 @@ export async function generateSceneImage(
   }
   const scene = scenes[sceneIndex];
   const draft = ((folder.memory_generated as string | null) ?? "").trim();
+  const style = getImageStyle(folder.image_style);
 
   const reference = await loadProfileReference(supabase, user.id);
-  const prompt = buildImagePrompt(scene, draft, reference !== null);
+  const prompt = buildImagePrompt(scene, draft, reference !== null, style);
 
   let b64: string | undefined;
   try {
@@ -345,6 +380,7 @@ export type PostState = {
   urls: (string | null)[];
   draft: string;
   folderName: string;
+  style: ImageStyle;
   hasPlan: boolean;
   error: string | null;
 };
@@ -360,6 +396,7 @@ export async function loadPostState(folderId: string): Promise<PostState> {
       urls: [],
       draft: "",
       folderName: "",
+      style: getImageStyle(null),
       hasPlan: false,
       error: "로그인이 필요해요.",
     };
@@ -367,7 +404,9 @@ export async function loadPostState(folderId: string): Promise<PostState> {
 
   const { data: folder } = await supabase
     .from("folders")
-    .select("id, name, memory_generated, image_scenes, image_target_count")
+    .select(
+      "id, name, memory_generated, image_scenes, image_target_count, image_style",
+    )
     .eq("id", folderId)
     .maybeSingle();
   if (!folder) {
@@ -376,6 +415,7 @@ export async function loadPostState(folderId: string): Promise<PostState> {
       urls: [],
       draft: "",
       folderName: "",
+      style: getImageStyle(null),
       hasPlan: false,
       error: "폴더를 찾지 못했어요.",
     };
@@ -419,6 +459,7 @@ export async function loadPostState(folderId: string): Promise<PostState> {
     urls,
     draft: ((folder.memory_generated as string | null) ?? "").trim(),
     folderName: folder.name as string,
+    style: getImageStyle(folder.image_style),
     hasPlan: scenes.length > 0,
     error: null,
   };
