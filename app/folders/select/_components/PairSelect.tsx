@@ -35,9 +35,9 @@ function PairCard({ id, label }: { id: string; label: string }) {
       className="flex h-32 w-48 flex-col items-center justify-center gap-2 rounded-md border-2 border-[#503836] bg-white text-[#503836] shadow-[4px_4px_0_#503836] transition-transform hover:-translate-y-1 hover:bg-[#FCF7B0] disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="text-lg font-bold">{label}</span>
-      <span className="text-xs text-[#503836]/60">
-        {pending ? "폴더 만드는 중..." : "이 두 주제로 시작"}
-      </span>
+      {pending && (
+        <span className="text-xs text-[#503836]/60">폴더 만드는 중...</span>
+      )}
     </button>
   );
 }
