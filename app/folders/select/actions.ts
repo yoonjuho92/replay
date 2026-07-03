@@ -2,18 +2,30 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getPairById } from "../categories";
-import { createPairFolders } from "../seed";
+import {
+  TOPIC_PICK_COUNT,
+  getCategoryBySlug,
+  isCategorySlug,
+} from "../categories";
+import { createFoldersForSlugs } from "../seed";
 
-export type SelectPairState = { error: string | null };
+export type SelectTopicsState = { error: string | null };
 
-export async function selectPairAction(
-  _prev: SelectPairState,
+export async function selectTopicsAction(
+  _prev: SelectTopicsState,
   formData: FormData,
-): Promise<SelectPairState> {
-  const pairId = String(formData.get("pairId") ?? "");
-  const pair = getPairById(pairId);
-  if (!pair) return { error: "주제를 다시 골라 주세요." };
+): Promise<SelectTopicsState> {
+  // 폼에서 고른 주제 slug들(중복 제거)
+  const slugs = [
+    ...new Set(formData.getAll("slug").map((v) => String(v))),
+  ].filter(isCategorySlug);
+
+  if (slugs.length !== TOPIC_PICK_COUNT) {
+    return { error: `주제를 ${TOPIC_PICK_COUNT}개 골라 주세요.` };
+  }
+  if (!slugs.every((s) => getCategoryBySlug(s)?.available)) {
+    return { error: "고를 수 없는 주제가 있어요." };
+  }
 
   const supabase = await createClient();
   const {
@@ -21,6 +33,6 @@ export async function selectPairAction(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  await createPairFolders(supabase, user.id, pair);
+  await createFoldersForSlugs(supabase, user.id, slugs);
   redirect("/folders");
 }

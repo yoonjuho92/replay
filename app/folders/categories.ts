@@ -1,5 +1,5 @@
 export type CategorySlug =
-  | "food"
+  | "ai"
   | "adventure"
   | "friend"
   | "season"
@@ -48,13 +48,13 @@ export function getImageStyle(value: unknown): ImageStyle {
 /** 예전 데이터 호환용: 과거에는 { story: "..." } 형태로 저장했다. */
 const LEGACY_STORY_KEY = "story";
 
-const FOOD_CONFIG: CategoryConfig = {
-  slug: "food",
-  name: "음식",
+const AI_CONFIG: CategoryConfig = {
+  slug: "ai",
+  name: "AI",
   available: true,
-  theme: "내 인생에서 가장 기억에 남는 한 가지 음식에 대한 이야기",
+  theme: "AI(인공지능)를 처음 만났던 경험과 그때의 마음에 대한 이야기",
   opening:
-    "살아오면서 가장 기억에 남는 음식을 하나 떠올려 볼까요? 좋아했던 음식, 이제는 먹을 수 없는 음식, 끝내 먹어보지 못한 음식, 사랑하는 사람이 좋아했던 음식… 무엇이든 좋아요. 어떤 음식이 떠오르세요?",
+    "살아오면서 인공지능(AI)을 처음 만난 순간을 떠올려 볼까요? 스마트폰 음성비서에게 처음 말을 걸어본 일, 챗봇과 대화해 본 일, 번역기나 사진을 자동으로 보정해 주는 기능을 써본 일, 뉴스에서 처음 AI 이야기를 들은 일… 무엇이든 좋아요. 어떤 기억이 떠오르세요?",
 };
 
 const ADVENTURE_CONFIG: CategoryConfig = {
@@ -103,7 +103,7 @@ const SONG_CONFIG: CategoryConfig = {
 };
 
 export const CATEGORIES: CategoryConfig[] = [
-  FOOD_CONFIG,
+  AI_CONFIG,
   ADVENTURE_CONFIG,
   FRIEND_CONFIG,
   SEASON_CONFIG,
@@ -113,22 +113,8 @@ export const CATEGORIES: CategoryConfig[] = [
 
 export const SYSTEM_FOLDER_NAMES = CATEGORIES.map((c) => c.name);
 
-/** 로그인 후 한 번 고르는 주제 쌍 — 각 쌍을 고르면 두 주제의 폴더가 생긴다. */
-export type TopicPair = {
-  id: string;
-  label: string;
-  slugs: [CategorySlug, CategorySlug];
-};
-
-export const TOPIC_PAIRS: TopicPair[] = [
-  { id: "food-adventure", label: "음식 + 모험", slugs: ["food", "adventure"] },
-  { id: "friend-season", label: "친구 + 계절", slugs: ["friend", "season"] },
-  { id: "seoul-song", label: "서울 + 노래", slugs: ["seoul", "song"] },
-];
-
-export function getPairById(id: string): TopicPair | null {
-  return TOPIC_PAIRS.find((p) => p.id === id) ?? null;
-}
+/** 로그인 후 한 번 고르는 주제 개수 — 6개 중 이만큼 골라 폴더로 만든다. */
+export const TOPIC_PICK_COUNT = 2;
 
 export function getCategoryByName(name: string): CategoryConfig | null {
   return CATEGORIES.find((c) => c.name === name) ?? null;
@@ -136,6 +122,10 @@ export function getCategoryByName(name: string): CategoryConfig | null {
 
 export function getCategoryBySlug(slug: CategorySlug): CategoryConfig | null {
   return CATEGORIES.find((c) => c.slug === slug) ?? null;
+}
+
+export function isCategorySlug(value: unknown): value is CategorySlug {
+  return typeof value === "string" && CATEGORIES.some((c) => c.slug === value);
 }
 
 /**

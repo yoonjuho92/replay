@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { BrowserWindow } from "../../_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
-import { getCategoryByName } from "../categories";
-import { PairSelect } from "./_components/PairSelect";
+import { TOPIC_PICK_COUNT, getCategoryByName } from "../categories";
+import { TopicSelect } from "./_components/TopicSelect";
 
 export default async function SelectPairPage() {
   const supabase = await createClient();
@@ -24,9 +24,9 @@ export default async function SelectPairPage() {
       <div className="flex w-full flex-col items-center gap-10">
         <div className="text-center text-[0.9375rem] leading-relaxed text-[#503836]">
           <p>먼저 함께 이야기 나눌 주제를 골라 주세요</p>
-          <p>세 묶음 중 하나를 고르면, 그 두 주제의 폴더가 만들어져요</p>
+          <p>여섯 가지 중 {TOPIC_PICK_COUNT}가지를 고르면, 그 주제들의 폴더가 만들어져요</p>
         </div>
-        <PairSelect />
+        <TopicSelect />
       </div>
     </BrowserWindow>
   );

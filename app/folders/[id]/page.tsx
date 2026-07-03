@@ -2,7 +2,8 @@ import { notFound, redirect } from "next/navigation";
 import { BrowserWindow } from "@/app/_components/BrowserWindow";
 import { createClient } from "@/lib/supabase/server";
 import { AgentChat } from "./_components/AgentChat";
-import { getCategoryByName } from "../categories";
+import { ChangeTopicButton } from "./_components/ChangeTopicButton";
+import { CATEGORIES, getCategoryByName } from "../categories";
 import { generateChatOpener } from "./agent-actions";
 
 type PageProps = {
@@ -43,6 +44,16 @@ export default async function MemoryPage({ params }: PageProps) {
 
   const initialGreeting = await generateChatOpener(folder.id);
 
+  // 바꿀 수 있는 주제 = 준비된 주제 중 내가 아직 폴더로 갖고 있지 않은 것.
+  const { data: myFolders } = await supabase
+    .from("folders")
+    .select("name")
+    .eq("user_id", user.id);
+  const heldNames = new Set((myFolders ?? []).map((f) => f.name as string));
+  const topicOptions = CATEGORIES.filter(
+    (c) => c.available && !heldNames.has(c.name),
+  ).map((c) => c.name);
+
   return (
     <BrowserWindow
       title={folder.name}
@@ -51,7 +62,18 @@ export default async function MemoryPage({ params }: PageProps) {
       folderId={folder.id}
       current="chat"
     >
-      <AgentChat folderId={folder.id} initialGreeting={initialGreeting} />
+      <div className="flex h-full min-h-0 w-full flex-col gap-3">
+        <div className="flex shrink-0 items-center justify-end">
+          <ChangeTopicButton
+            folderId={folder.id}
+            currentName={folder.name}
+            options={topicOptions}
+          />
+        </div>
+        <div className="min-h-0 flex-1">
+          <AgentChat folderId={folder.id} initialGreeting={initialGreeting} />
+        </div>
+      </div>
     </BrowserWindow>
   );
 }
