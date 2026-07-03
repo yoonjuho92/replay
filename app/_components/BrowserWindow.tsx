@@ -15,6 +15,8 @@ type BrowserWindowProps = {
   fill?: boolean;
   fullPage?: boolean;
   hideTitleBar?: boolean;
+  /** 전체화면일 때도 콘텐츠를 화면 중앙에 정렬한다(첫 페이지·폴더·로그인 등). */
+  centerContent?: boolean;
   folderId?: string;
   current?: FolderTab;
 };
@@ -27,6 +29,7 @@ export function BrowserWindow({
   fill = false,
   fullPage = false,
   hideTitleBar = false,
+  centerContent = false,
   folderId,
   current,
 }: BrowserWindowProps) {
@@ -163,7 +166,13 @@ export function BrowserWindow({
               : "h-[65vh] bg-[#F3F7FA]"
           }
         >
-          <div className="flex h-full flex-col px-8 py-8">{children}</div>
+          <div
+            className={`flex h-full flex-col px-8 py-8 ${
+              centerContent ? "items-center justify-center overflow-y-auto" : ""
+            }`}
+          >
+            {children}
+          </div>
         </div>
       ) : (
         <div className="h-[65vh] overflow-y-auto bg-[#F3F7FA]">

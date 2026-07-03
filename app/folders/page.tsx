@@ -74,7 +74,7 @@ export default async function FoldersPage() {
   const folderNames = folders.map((f) => f.name).join(", ");
 
   return (
-    <BrowserWindow title="새로고침" showSignOut>
+    <BrowserWindow title="새로고침" showSignOut centerContent>
       <div className="flex w-full flex-col items-center gap-12">
         <div className="text-center text-[0.9375rem] leading-relaxed text-[#503836]">
           <p>당신이 고른 두 가지 주제예요</p>

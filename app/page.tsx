@@ -4,7 +4,7 @@ import { BrowserWindow } from "./_components/BrowserWindow";
 
 export default function Home() {
   return (
-    <BrowserWindow title="새로고침">
+    <BrowserWindow title="새로고침" centerContent>
       <div className="flex flex-col items-center gap-8">
         <Image
           src="/rewind.png"

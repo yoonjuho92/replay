@@ -5,7 +5,7 @@ import { loginAction } from "./actions";
 
 export default function LoginPage() {
   return (
-    <BrowserWindow title="로그인">
+    <BrowserWindow title="로그인" centerContent>
       <div className="flex w-full flex-col items-center gap-8">
         <h1 className="text-2xl font-bold text-[#503836]">로그인</h1>
         <AuthForm action={loginAction} submitLabel="로그인" />

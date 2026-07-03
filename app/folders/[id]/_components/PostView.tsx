@@ -142,6 +142,7 @@ export function PostView({
   if (scenes.length === 0) {
     const hasDraft = draft.trim().length > 0;
     return (
+      <div className="flex h-full w-full items-center justify-center">
       <div className="flex w-full max-w-[460px] flex-col items-center gap-5 rounded-md border-2 border-[#503836] bg-white p-6 text-[#503836] shadow-[4px_4px_0_#503836]">
         <p className="w-full whitespace-pre-wrap text-[0.9375rem] leading-relaxed">
           {draft || "아직 작성된 글이 없어요. 이야기 만들기에서 글을 먼저 적어 주세요."}
@@ -177,111 +178,103 @@ export function PostView({
           </Link>
         )}
       </div>
+      </div>
     );
   }
 
   const allReady = slots.length > 0 && slots.every((s) => s?.url);
 
   return (
-    <div className="w-full max-w-[460px] overflow-hidden rounded-md border-2 border-[#503836] bg-white shadow-[4px_4px_0_#503836]">
-      <div className="flex items-center gap-3 border-b-2 border-[#503836] bg-[#FCF7B0] px-4 py-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-[#503836] bg-[#BADECB] text-base font-bold text-[#503836]">
-          {folderName.slice(0, 1)}
-        </div>
-        <span className="text-sm font-bold text-[#503836]">{folderName}</span>
-      </div>
-
-      <div
-        ref={scrollerRef}
-        className="flex w-full snap-x snap-mandatory overflow-x-auto"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {scenes.map((scene, i) => (
+    <div className="flex h-full min-h-0 w-full flex-col">
+      {/* 좌: 그림 / 우: 글 (전체는 스크롤하지 않고, 글이 길면 오른쪽 칸 안에서만 스크롤) */}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 md:grid-cols-2">
+        {/* 좌 — 그림 (이미지는 잘리지 않게 전체를 보여준다) */}
+        <div className="flex min-h-0 flex-col overflow-hidden rounded border-2 border-[#CCE7D7] bg-white">
           <div
-            key={i}
-            className="relative aspect-square w-full shrink-0 snap-center bg-[#F3F7FA]"
+            ref={scrollerRef}
+            className="flex min-h-0 w-full flex-1 snap-x snap-mandatory overflow-x-auto"
+            style={{ scrollbarWidth: "none" }}
           >
-            {slots[i]?.url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={slots[i].url ?? undefined}
-                alt={scene.caption}
-                className="h-full w-full object-cover"
-              />
-            ) : slots[i]?.error ? (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-[#B0413E]">
-                <span>이미지를 그리지 못했어요</span>
-                <span className="text-xs text-[#503836]/60">
-                  {slots[i].error}
-                </span>
+            {scenes.map((scene, i) => (
+              <div
+                key={i}
+                className="relative flex h-full w-full shrink-0 snap-center items-center justify-center bg-[#F3F7FA]"
+              >
+                {slots[i]?.url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={slots[i].url ?? undefined}
+                    alt={scene.caption}
+                    className="h-full w-full object-contain"
+                  />
+                ) : slots[i]?.error ? (
+                  <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center text-sm text-[#B0413E]">
+                    <span>이미지를 그리지 못했어요</span>
+                    <span className="text-xs text-[#503836]/60">
+                      {slots[i].error}
+                    </span>
+                  </div>
+                ) : (
+                  <SkeletonScene caption={scene.caption} />
+                )}
+                {scenes.length > 1 && (
+                  <span className="absolute right-3 top-3 rounded-full bg-[#503836]/80 px-2 py-0.5 text-xs font-bold text-white">
+                    {i + 1}/{scenes.length}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => regenerate(i)}
+                  disabled={slots[i]?.regenerating}
+                  className="absolute left-3 top-3 rounded-full border-2 border-[#503836] bg-white/90 px-2 py-0.5 text-xs font-bold text-[#503836] transition-colors hover:bg-white disabled:opacity-60"
+                >
+                  {slots[i]?.regenerating ? "그리는 중..." : "다시 그리기"}
+                </button>
               </div>
-            ) : (
-              <SkeletonScene caption={scene.caption} />
-            )}
-            {scenes.length > 1 && (
-              <span className="absolute right-3 top-3 rounded-full bg-[#503836]/80 px-2 py-0.5 text-xs font-bold text-white">
-                {i + 1}/{scenes.length}
-              </span>
-            )}
+            ))}
+          </div>
+
+          {scenes.length > 1 && (
+            <div className="flex shrink-0 justify-center gap-1.5 border-t-2 border-[#CCE7D7] bg-white py-2">
+              {scenes.map((_, i) => (
+                <span
+                  key={i}
+                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                    i === activeIdx ? "bg-[#503836]" : "bg-[#503836]/25"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          <p className="shrink-0 border-t-2 border-[#CCE7D7] bg-white px-4 py-2 text-center text-xs font-bold text-[#5DBFA8]">
+            {scenes[activeIdx]?.caption}
+          </p>
+
+          {/* 그림 아래 — 저장 버튼 (제목과 버튼 사이 구분선 없음) */}
+          <div className="flex shrink-0 flex-col gap-3 bg-white p-4 pt-0">
             <button
               type="button"
-              onClick={() => regenerate(i)}
-              disabled={slots[i]?.regenerating}
-              className="absolute left-3 top-3 rounded-full border-2 border-[#503836] bg-white/90 px-2 py-0.5 text-xs font-bold text-[#503836] transition-colors hover:bg-white disabled:opacity-60"
+              onClick={downloadAll}
+              disabled={!allReady || downloading}
+              className="rounded-md bg-[#503836] px-6 py-2 text-sm font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-50"
             >
-              {slots[i]?.regenerating ? "그리는 중..." : "다시 그리기"}
+              {downloading
+                ? "내려받는 중..."
+                : allReady
+                  ? "그림 3장 모두 저장"
+                  : "그림이 다 그려지면 저장할 수 있어요"}
             </button>
           </div>
-        ))}
-      </div>
-
-      {scenes.length > 1 && (
-        <div className="flex justify-center gap-1.5 border-t-2 border-[#503836] bg-white py-2">
-          {scenes.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1.5 w-1.5 rounded-full transition-colors ${
-                i === activeIdx ? "bg-[#503836]" : "bg-[#503836]/25"
-              }`}
-            />
-          ))}
         </div>
-      )}
 
-      <div className="flex flex-col gap-3 border-t-2 border-[#503836] bg-white p-4">
-        <p className="text-xs font-bold text-[#5DBFA8]">
-          {scenes[activeIdx]?.caption}
-        </p>
-        <p className="whitespace-pre-wrap text-[0.875rem] leading-relaxed text-[#503836]">
-          {draft || "(글이 비어 있어요)"}
-        </p>
-
-        <button
-          type="button"
-          onClick={downloadAll}
-          disabled={!allReady || downloading}
-          className="mt-1 rounded-md bg-[#503836] px-6 py-2 text-sm font-bold text-white transition-colors hover:bg-[#3d2a28] disabled:opacity-50"
-        >
-          {downloading
-            ? "내려받는 중..."
-            : allReady
-              ? "그림 3장 모두 저장"
-              : "그림이 다 그려지면 저장할 수 있어요"}
-        </button>
-
-        <div className="mt-2 flex flex-col items-center gap-2 border-t border-[#503836]/15 pt-3">
-          <p className="text-xs font-bold text-[#503836]/70">
-            다른 그림체로 다시 그리기
-          </p>
-          <StylePicker
-            value={initialStyle}
-            onChange={(s) => handleGenerate(s)}
-            disabled={generating}
-          />
-          {generating && (
-            <p className="text-xs text-[#503836]/60">새 그림체로 다시 그리는 중...</p>
-          )}
-          {genError && <p className="text-xs text-[#B0413E]">{genError}</p>}
+        {/* 우 — 글 */}
+        <div className="flex min-h-0 flex-col overflow-hidden rounded border-2 border-[#CCE7D7] bg-white p-4">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1">
+            <p className="whitespace-pre-wrap text-[0.9375rem] leading-relaxed text-[#503836]">
+              {draft || "(글이 비어 있어요)"}
+            </p>
+          </div>
         </div>
       </div>
     </div>

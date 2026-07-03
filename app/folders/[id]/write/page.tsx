@@ -35,22 +35,21 @@ export default async function WritePage({ params }: PageProps) {
         title={folder.name}
         showSignOut
         fullPage
-        hideTitleBar
         folderId={folder.id}
         current="write"
       >
-        <div className="flex h-full w-full flex-col items-center justify-center gap-5 text-center text-[#503836]">
-          <p className="text-lg leading-relaxed">
-            아직 나눈 이야기가 없어요.
-            <br />
-            먼저 대화하기에서 이야기를 들려주세요.
-          </p>
-          <Link
-            href={`/folders/${folder.id}`}
-            className="rounded-md bg-[#503836] px-8 py-2 font-bold text-white transition-colors hover:bg-[#3d2a28]"
-          >
-            대화하기로 가기 →
-          </Link>
+        <div className="flex h-full w-full items-center justify-center">
+          <div className="flex w-full max-w-[460px] flex-col items-center gap-5 rounded-md border-2 border-[#503836] bg-white p-6 text-[#503836] shadow-[4px_4px_0_#503836]">
+            <p className="w-full text-[0.9375rem] leading-relaxed">
+              아직 나눈 이야기가 없어요. 먼저 대화하기에서 이야기를 들려주세요.
+            </p>
+            <Link
+              href={`/folders/${folder.id}`}
+              className="rounded-md bg-[#503836] px-8 py-2 text-base font-bold text-white transition-colors hover:bg-[#3d2a28]"
+            >
+              대화하기로 가기 →
+            </Link>
+          </div>
         </div>
       </BrowserWindow>
     );
