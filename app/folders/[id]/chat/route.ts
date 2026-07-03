@@ -2,11 +2,13 @@ import type { NextRequest } from "next/server";
 import type OpenAI from "openai";
 import { createClient } from "@/lib/supabase/server";
 import { hasStory } from "../../categories";
+import { AGENT_MODEL } from "../../prompts/models";
 import {
-  AGENT_MODEL,
+  buildInterviewSystemPrompt,
+  buildInterviewToolset,
+} from "../../prompts/interview";
+import {
   type AgentMessage,
-  buildSystemPrompt,
-  buildToolset,
   getOpenAI,
   loadFolderState,
   persistStory,
@@ -58,7 +60,7 @@ export async function POST(
           return;
         }
 
-        const tools = buildToolset();
+        const tools = buildInterviewToolset();
         let currentStory = folder.story;
         let complete = false;
 
@@ -66,7 +68,11 @@ export async function POST(
         const oaiMessages: OAIMessage[] = [
           {
             role: "system",
-            content: buildSystemPrompt(folder.category, currentStory, folder.name),
+            content: buildInterviewSystemPrompt(
+              folder.category,
+              currentStory,
+              folder.name,
+            ),
           },
           ...prevMessages.map(
             (m) => ({ role: m.role, content: m.content }) as OAIMessage,
@@ -77,7 +83,11 @@ export async function POST(
         for (let i = 0; i < 6; i++) {
           oaiMessages[0] = {
             role: "system",
-            content: buildSystemPrompt(folder.category, currentStory, folder.name),
+            content: buildInterviewSystemPrompt(
+              folder.category,
+              currentStory,
+              folder.name,
+            ),
           };
 
           const completion = await openai.chat.completions.create({

@@ -1,6 +1,7 @@
 "use server";
 
 import OpenAI, { toFile } from "openai";
+import { TRANSCRIBE_MODEL } from "../folders/prompts/models";
 
 const MAX_AUDIO_BYTES = 20 * 1024 * 1024;
 
@@ -45,7 +46,7 @@ export async function transcribeAudio(
   try {
     const result = await openai.audio.transcriptions.create({
       file,
-      model: "gpt-4o-transcribe",
+      model: TRANSCRIBE_MODEL,
       language: "ko",
       response_format: "json",
     });
