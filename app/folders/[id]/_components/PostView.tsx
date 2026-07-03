@@ -7,7 +7,8 @@ import {
   IMAGE_STYLES,
   type ImageStyle,
 } from "../../categories";
-import { generateSceneImage, planFinalize, type Scene } from "../post-actions";
+import { generateSceneImage, planFinalize } from "../post-actions";
+import type { Scene } from "../../prompts/image";
 
 type Props = {
   folderId: string;

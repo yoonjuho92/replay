@@ -21,8 +21,6 @@ import {
   buildScenePlanUserPrompt,
 } from "../prompts/image";
 
-export type { Scene };
-
 const BUCKET = "illustrations";
 // 그림은 주제마다 반드시 3장씩 만든다.
 const SCENE_COUNT = 3;
