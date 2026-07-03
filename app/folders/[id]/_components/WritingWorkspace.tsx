@@ -13,6 +13,8 @@ type Props = {
 };
 
 const AUTOSAVE_DEBOUNCE_MS = 700;
+/** 글자 수 안내 기준(공백 포함) */
+const DRAFT_CHAR_LIMIT = 5000;
 
 export function WritingWorkspace({
   folderId,
@@ -99,6 +101,13 @@ export function WritingWorkspace({
             placeholder="여기에 당신의 이야기를 직접 적어 보세요. 오른쪽 에이전트에게 물어보면서 함께 다듬어도 좋아요."
             className="flex-1 resize-none rounded border-2 border-[#CCE7D7] bg-white p-4 text-[0.9375rem] leading-relaxed text-[#503836] placeholder:text-[#A8B5AD] focus:outline-none"
           />
+          <div
+            className={`shrink-0 text-right text-xs ${
+              draft.length > DRAFT_CHAR_LIMIT ? "text-[#B0413E]" : "text-[#A8B5AD]"
+            }`}
+          >
+            {draft.length} / {DRAFT_CHAR_LIMIT}자 (공백 포함)
+          </div>
         </div>
         <div className="flex min-h-0 flex-col gap-2">
           <div

@@ -59,6 +59,7 @@ export default async function MemoryPage({ params }: PageProps) {
       title={folder.name}
       showSignOut
       fill
+      fullPage
       folderId={folder.id}
       current="chat"
     >

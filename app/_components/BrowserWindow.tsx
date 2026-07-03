@@ -33,7 +33,10 @@ export function BrowserWindow({
   const [isFull, setIsFull] = useState(fullPage);
 
   // 페이지(탭)를 이동해도 전체화면 상태를 유지하기 위해 localStorage에 보존한다.
+  // 단, fullPage 페이지(대화하기·이야기 만들기)는 전체화면이 기본이라
+  // 저장된 값과 관계없이 항상 전체화면으로 연다.
   useEffect(() => {
+    if (fullPage) return;
     try {
       const raw = localStorage.getItem(FULL_STORAGE_KEY);
       if (raw == null) return;
@@ -42,7 +45,7 @@ export function BrowserWindow({
     } catch {
       // ignore
     }
-  }, []);
+  }, [fullPage]);
 
   function toggleFull() {
     setIsFull((v) => {
